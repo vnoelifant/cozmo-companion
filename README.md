@@ -1,1 +1,1 @@
-# cosmo-companion
+# cozmo-companion
