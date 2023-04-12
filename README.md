@@ -9,6 +9,6 @@ This goal of this project is to program Cozmo, a small, interactive robot develo
   * [GPT-4](https://openai.com/product/gpt-4) (on the waitlist as of 4/12/23)
   * Text Sentiment Analysis using Python's [NLTK (Natural Language Toolkit)](https://www.nltk.org/)
   * Additional Machine Learning tools via [scikit-learn](https://scikit-learn.org/stable/)
-  * **Bonus**: Emotion recognition based on physiological signals processed from [SSI((Social Signal Interpretation)](https://github.com/hcmlab/ssi) framework
+  * **Bonus**: Emotion recognition based on physiological signals processed from [SSI(Social Signal Interpretation)](https://github.com/hcmlab/ssi) framework
 
 The target audience is intended to be all people who want a companion, entertainment, or a support system during difficult times.
