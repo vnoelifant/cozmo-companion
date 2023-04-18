@@ -25,7 +25,7 @@ def main():
                 speech_text = my_convo.transcribe_audio()
                 my_convo.get_cozmo_response(speech_text)
                 if "goodbye" or "bye" in speech_text:
-                    break
+                    break # start_dialogue = False does not break the loop here
         
             except:
                 traceback.print_exc()
