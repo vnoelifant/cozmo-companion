@@ -7,12 +7,11 @@ from recorder_cozmo import Recorder
 
 def main():
 
-    start_dialogue = False
 
     my_convo = Dialogue('speech.wav')
     my_convo.get_cozmo_response("Hello! I will echo back what you say!")
     
-    while not start_dialogue:
+    while True:
 
         try:
             print("starting recording process")
@@ -25,7 +24,7 @@ def main():
                 speech_text = my_convo.transcribe_audio()
                 my_convo.get_cozmo_response(speech_text)
                 if "goodbye" or "bye" in speech_text:
-                    break # start_dialogue = False does not break the loop here
+                    break 
         
             except:
                 traceback.print_exc()
