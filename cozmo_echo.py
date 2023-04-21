@@ -23,7 +23,7 @@ def main():
             try:
                 speech_text = my_convo.transcribe_audio()
                 my_convo.get_cozmo_response(speech_text)
-                if "goodbye" or "bye" in speech_text:
+                if "goodbye" in speech_text or "bye" in speech_text:
                     break 
         
             except:
