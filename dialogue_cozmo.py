@@ -1,20 +1,22 @@
 import json
-from ibm_watson import SpeechToTextV1, AssistantV1, NaturalLanguageUnderstandingV1, \
-    ToneAnalyzerV3, TextToSpeechV1
-from ibm_watson.natural_language_understanding_v1 \
-    import Features, EntitiesOptions, KeywordsOptions
-from speech_sentiment_python.recorder import Recorder
+from ibm_watson import SpeechToTextV1
+from ibm_cloud_sdk_core.authenticators import IAMAuthenticator
 import traceback
 import sys
-from pydub import AudioSegment
-from pydub.playback import play
 import cozmo
 import time
 import asyncio
 from PIL import Image
 from decouple import config
 
+# NOTE: Commented code is from prior iteration that utilized Watson Tone Analyzer
+# and Watson Assistant services
+# TODO: Remove comments for unused Watson services
+
+"""
+
 TOP_TONE_SCORE_THRESHOLD = 0.75
+
 
 tone_analyzer = ToneAnalyzerV3(
     VERSION=config('VERSION_TONE'),
@@ -29,7 +31,11 @@ assistant = AssistantV1(
     URL=config('URL_ASST')
 )
 
+
+
 WORKSPACE_ID = config('WORKSPACE_ID')
+
+
 
 text_to_speech = TextToSpeechV1(
     IAM_APIKEY=config('IAM_APIKEY_TTS'),
@@ -40,17 +46,24 @@ print('Workspace id {0}'.format(WORKSPACE_ID))
 
 emotions = ['sadness', 'joy', 'anger', 'fear']
 
+"""
+
 
 class Dialogue:
     def __init__(self, path_to_audio_file):
         self.path_to_audio_file = path_to_audio_file
 
     def transcribe_audio(self):
-        # initialize speech to text service
-        speech_to_text = SpeechToTextV1(
-            IAM_APIKEY=config('IAM_APIKEY_STT'),
-            URL=config('URL_STT')
-        )
+        """
+        Function to transcribe recorded speech
+        """
+        
+        # initialize speech to text service. Source: https://cloud.ibm.com/apidocs/speech-to-text
+        authenticator = IAMAuthenticator(config('IAM_APIKEY_STT'))
+        
+        speech_to_text = SpeechToTextV1(authenticator=authenticator)
+        
+        speech_to_text.set_service_url(config('URL_STT'))
 
         with open((self.path_to_audio_file), 'rb') as audio_file:
             speech_result = speech_to_text.recognize(
@@ -64,6 +77,8 @@ class Dialogue:
             speech_text = speech_result['results'][0]['alternatives'][0]['transcript']
             print("User Speech Text: " + speech_text + "\n")
 
+        # Below commented code was used for Watson Assistant Dialogue Service
+        """
             input_text = {
                 'workspace_id': WORKSPACE_ID,
                 'input': {
@@ -72,6 +87,13 @@ class Dialogue:
             }
 
         return input_text
+        """
+
+        return speech_text
+    
+    # Below commented code was used for Watson Assistant Dialogue Service
+    
+    """
 
     def get_watson_intent(self, input_text):
 
@@ -254,14 +276,27 @@ class Dialogue:
                               f"Oh dear! Okay, I will be sure not to pick up {entity_state}.To lighten things up for you, let me recommend reading The Miner, by Sotseki."],
                  'John': ["Oh okay. Is eveyrthing alright with you though?",
                           f"I'm sorry to hear that. Well let me know if you ever want to talk about" + " " + entity_state + ".You know I am here for you!"]}]
-
-    # cozmo robot speaks the text response from Watson and says your facial expression
-    # Following emotions: unknown, neutral, happy, surprosed, angry, sad
+    """
+    
     def get_cozmo_response(self, response, top_tone = ""):
-
+        
+        """
+        Function to get Cozmo's response 
+        top_tone parameter was used for integration of Watson Tone Analyzer, which is depracated
+        """
+    
+        # Cozmo speaks the text response from Watson
         def cozmo_text_response(robot: cozmo.robot.Robot):
+            """
+            This function allows Cozmo to speak back the response to user
+            """
             robot.say_text(response).wait_for_completed()
+
+        
         def cozmo_face_response(robot: cozmo.robot.Robot):
+            """
+            # This function is used for Cozmo to detect facial emotion and make responses based on emotion
+            """
             print("Running cozmo face response")
             try:
 
@@ -297,13 +332,26 @@ class Dialogue:
             except asyncio.TimeoutError:
                 print("did not find a face")
                 pass
-
+        
+        
         def cozmo_program(robot: cozmo.robot.Robot):
+            """
+             # robot is an instance of class cozmo.robot.Robot, which is the interface 
+             to a Cozmo robot. # http://cozmosdk.anki.com/docs/generated/cozmo.robot.html#cozmo.robot.Robot
+            """
+            
             cozmo_text_response(robot)
+            
+            # NOTE: Commented Code block below was used for integration of Watson Tone Analyzer. 
+            # This service appears to have been depracated a/o 4/17/23. 
+            """
             print("check the tone for face detection: ", top_tone)
             if top_tone and top_tone == "joy":
                 print("detected joyful tone")
                 cozmo_face_response(robot)
             else:
                 pass
+            """
+        # Connect to Cozmo and run the provided program/function given as the parameter
+        # http://cozmosdk.anki.com/docs/generated/cozmo.html
         cozmo.run_program(cozmo_program)
