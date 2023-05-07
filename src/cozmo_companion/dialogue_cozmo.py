@@ -320,7 +320,7 @@ class Dialogue:
                 if face.expression == 'happy':
                     robot.say_text(f"Yay I am so glad you have a {face.expression} face!").wait_for_completed()
                 # time.sleep(.1)
-                image = Image.open("cozmo_smiley_2.jpg")
+                image = Image.open("cozmo_smiley.jpg")
                 image = image.resize(cozmo.oled_face.dimensions(), Image.NEAREST)
                 image = cozmo.oled_face.convert_image_to_screen_data(image)
                 seconds = 10
