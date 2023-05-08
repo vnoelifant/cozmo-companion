@@ -1,5 +1,6 @@
 import json
 import sys
+import os
 import traceback
 from .dialogue_cozmo import Dialogue
 from .recorder_cozmo import Recorder
@@ -7,15 +8,23 @@ from .recorder_cozmo import Recorder
 
 def main():
 
-
-    my_convo = Dialogue('speech.wav')
+    try:
+        speech_fname = sys.argv[1]
+    except IndexError:
+        print(f"Usage: {sys.argv[0]} <Name of Speech File>")
+        sys.exit(1)  
+    
+    curr_dir = os.getcwd()
+    speech_out = os.path.join(curr_dir, "wav_output", speech_fname + ".wav")
+    
+    my_convo = Dialogue(speech_out)
     my_convo.get_cozmo_response("Hello! I will echo back what you say!")
     
     while True:
 
         try:
             print("starting recording process")
-            recorder = Recorder("speech.wav")
+            recorder = Recorder(speech_out)
             print("Please say something nice into the microphone\n")
             recorder.save_to_file()
             print("Transcribing audio....\n")
@@ -24,6 +33,7 @@ def main():
                 speech_text = my_convo.transcribe_audio()
                 my_convo.get_cozmo_response(speech_text)
                 if "exit" in speech_text:
+                    print("Exiting program...")
                     break 
         
             except:
