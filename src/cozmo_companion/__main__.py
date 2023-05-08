@@ -1,4 +1,5 @@
 import json
+import typer
 import sys
 import os
 import traceback
@@ -6,22 +7,14 @@ from .dialogue_cozmo import Dialogue
 from .recorder_cozmo import Recorder
 
 
-def main():
-
-    try:
-        speech_fname = sys.argv[1]
-    except IndexError:
-        print(f"Usage: {sys.argv[0]} <Name of Speech File>")
-        sys.exit(1)  
-    
+def main(filename: str):
     curr_dir = os.getcwd()
-    speech_out = os.path.join(curr_dir, "wav_output", speech_fname + ".wav")
-    
+    speech_out = os.path.join(curr_dir, "wav_output", filename + ".wav")
+
     my_convo = Dialogue(speech_out)
     my_convo.get_cozmo_response("Hello! I will echo back what you say!")
-    
-    while True:
 
+    while True:
         try:
             print("starting recording process")
             recorder = Recorder(speech_out)
@@ -34,17 +27,19 @@ def main():
                 my_convo.get_cozmo_response(speech_text)
                 if "exit" in speech_text:
                     print("Exiting program...")
-                    break 
-        
+                    break
+
             except:
                 traceback.print_exc()
                 print("error in speech detection")
-                my_convo.get_cozmo_response("Sorry I couldn't understand you. Please repeat")
-        
+                my_convo.get_cozmo_response(
+                    "Sorry I couldn't understand you. Please repeat"
+                )
 
         except KeyboardInterrupt:
             print("closing via keyboard interrupt")
             sys.exit(0)
-        
-if __name__ == '__main__':
-    main()
+
+
+if __name__ == "__main__":
+    typer.run(main)
