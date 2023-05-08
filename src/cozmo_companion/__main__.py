@@ -1,8 +1,8 @@
 import json
 import sys
 import traceback
-from dialogue_cozmo import Dialogue
-from recorder_cozmo import Recorder
+from .dialogue_cozmo import Dialogue
+from .recorder_cozmo import Recorder
 
 
 def main():
