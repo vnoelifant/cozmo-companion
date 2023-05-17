@@ -153,3 +153,6 @@ dmypy.json
 # Ignore code-workspaces
 *.code-workspace
 
+# Ignore .wav files
+*.wav
+
