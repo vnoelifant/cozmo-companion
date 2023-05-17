@@ -1,0 +1,31 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "cozmo_companion"
+version = "0.0.1"
+authors = [
+  { name="Veronica Medrano", email="veronicanoel12490@gmail.com" },
+]
+description = "A program to converse with the Cozmo tabletop robot"
+readme = "README.md"
+requires-python = ">=3.9"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+dependencies = [
+  "python-decouple",
+  "black",
+  "ibm-watson",
+  "typer[all]",
+  "PyAudio",
+  "cozmo[camera]",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/vnoelifant/cozmo-companion"
+"Project Tracker" = "https://github.com/users/vnoelifant/projects/4"
