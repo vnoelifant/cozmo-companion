@@ -30,19 +30,11 @@ def converse(filename: str):
             recorder.save_to_file()
             print("Transcribing audio....\n")
 
-            try:
-                speech_text = my_convo.transcribe_audio()
-                my_convo.get_cozmo_response(speech_text)
-                if speech_text in EXIT_CONDITION:
-                    print("Exiting program...")
-                    break
-
-            except:
-                traceback.print_exc()
-                print("error in speech detection")
-                my_convo.get_cozmo_response(
-                    "Sorry I couldn't understand you. Please repeat"
-                )
+            speech_text = my_convo.transcribe_audio()
+            my_convo.get_cozmo_response(speech_text)
+            if speech_text in EXIT_CONDITION:
+                print("Exiting program...")
+                break
 
         except KeyboardInterrupt:
             print("closing via keyboard interrupt")
