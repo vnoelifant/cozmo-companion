@@ -1,13 +1,14 @@
-import json
-from ibm_watson import SpeechToTextV1
-from ibm_cloud_sdk_core.authenticators import IAMAuthenticator
-import traceback
-import sys
-import cozmo
-import time
 import asyncio
-from PIL import Image
+import json
+import sys
+import time
+import traceback
+
+import cozmo
 from decouple import config
+from ibm_cloud_sdk_core.authenticators import IAMAuthenticator
+from ibm_watson import SpeechToTextV1
+from PIL import Image
 
 # NOTE: Commented code is from prior iteration that utilized Watson Tone Analyzer
 # and Watson Assistant services
@@ -320,7 +321,7 @@ class Dialogue:
                 if face.expression == 'happy':
                     robot.say_text(f"Yay I am so glad you have a {face.expression} face!").wait_for_completed()
                 # time.sleep(.1)
-                image = Image.open("cozmo_smiley_2.jpg")
+                image = Image.open("cozmo_smiley.jpg")
                 image = image.resize(cozmo.oled_face.dimensions(), Image.NEAREST)
                 image = cozmo.oled_face.convert_image_to_screen_data(image)
                 seconds = 10

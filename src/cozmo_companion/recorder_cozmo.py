@@ -1,8 +1,10 @@
 
-import pyaudio
 import wave
 from array import array
 from struct import pack
+
+import pyaudio
+
 
 class Recorder:
     def __init__(self, path):
