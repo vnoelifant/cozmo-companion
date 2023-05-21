@@ -2,13 +2,13 @@ import json
 import os
 import sys
 import traceback
+from pathlib import Path
+from typing import Final
 
 import typer
 
-from typing import Final
 from .dialogue_cozmo import Dialogue
 from .recorder_cozmo import Recorder
-
 
 app = typer.Typer()
 
@@ -16,8 +16,9 @@ EXIT_CONDITION: Final[str] = "exit"
 
 @app.command()
 def converse(filename: str):
-    curr_dir = os.getcwd()
-    speech_out = os.path.join(curr_dir, "wav_output", filename + ".wav")
+    Path.cwd() / "wav_output" / f"{filename}.wav"
+    curr_dir = Path.cwd()
+    speech_out = curr_dir / "wav_output" / f"{filename}.wav"
 
     my_convo = Dialogue(speech_out)
     my_convo.get_cozmo_response("Hello! I will echo back what you say!")
