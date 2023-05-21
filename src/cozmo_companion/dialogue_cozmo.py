@@ -1,13 +1,14 @@
-import json
-from ibm_watson import SpeechToTextV1
-from ibm_cloud_sdk_core.authenticators import IAMAuthenticator
-import traceback
-import sys
-import cozmo
-import time
 import asyncio
-from PIL import Image
+import json
+import sys
+import time
+import traceback
+
+import cozmo
 from decouple import config
+from ibm_cloud_sdk_core.authenticators import IAMAuthenticator
+from ibm_watson import SpeechToTextV1
+from PIL import Image
 
 # NOTE: Commented code is from prior iteration that utilized Watson Tone Analyzer
 # and Watson Assistant services
