@@ -10,7 +10,7 @@ authors = [
 ]
 description = "A program to converse with the Cozmo tabletop robot"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.7"
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
@@ -29,3 +29,6 @@ dependencies = [
 [project.urls]
 "Homepage" = "https://github.com/vnoelifant/cozmo-companion"
 "Project Tracker" = "https://github.com/users/vnoelifant/projects/4"
+
+[project.scripts]
+cozmo = "cozmo_companion.cli:app"
