@@ -13,6 +13,15 @@ from ibm_cloud_sdk_core.authenticators import IAMAuthenticator
 from ibm_watson import SpeechToTextV1
 from PIL import Image
 from .recorder_cozmo import Recorder
+from .constants import (
+    CONTENT_TYPE,
+    WORD_ALTERNATIVE_THRESHOLDS,
+    KEYWORDS,
+    KEYWORDS_THRESHOLD,
+    GPT_MODEL,
+    MAX_TOKENS,
+    TEMPERATURE,
+)
 
 # Initialize speech to text service. Source: https://cloud.ibm.com/apidocs/speech-to-text
 authenticator = IAMAuthenticator(config("IAM_APIKEY_STT"))
@@ -33,13 +42,6 @@ class VoiceAssistant:
     """
 
     def __init__(self):
-        self.content_type = "audio/wav"
-        self.word_alternatives_threshold = 0.9
-        self.keywords = ["hey", "hi", "watson", "friend", "meet"]
-        self.keywords_threshold = 0.5
-        self.gpt_model = "gpt-3.5-turbo"
-        self.max_tokens = 1000
-        self.temperature = 1.2
         self.conversation_history = [
             {"role": "system", "content": "You are a helpful, friendly assistant"}
         ]
@@ -61,10 +63,10 @@ class VoiceAssistant:
         with open((speech_out), "rb") as audio_file:
             speech_result = speech_to_text.recognize(
                 audio=audio_file,
-                content_type=self.content_type,
-                word_alternatives_threshold=self.word_alternatives_threshold,
-                keywords=self.keywords,
-                keywords_threshold=self.keywords_threshold,
+                content_type=CONTENT_TYPE,
+                word_alternatives_threshold=WORD_ALTERNATIVE_THRESHOLDS,
+                keywords=KEYWORDS,
+                keywords_threshold=KEYWORDS_THRESHOLD,
             ).get_result()
 
             speech_text = speech_result["results"][0]["alternatives"][0]["transcript"]
@@ -81,9 +83,9 @@ class VoiceAssistant:
         self.conversation_history.append({"role": "user", "content": text})
 
         gpt_response = openai.ChatCompletion.create(
-            model=self.gpt_model,
-            max_tokens=self.max_tokens,
-            temperature=self.temperature,
+            model=self.GPT_MODEL,
+            max_tokens=MAX_TOKENS,
+            temperature=TEMPERATURE,
             messages=self.conversation_history,
         )
 
