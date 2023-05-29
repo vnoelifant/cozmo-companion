@@ -14,7 +14,7 @@ app = typer.Typer()
 
 @app.command()
 def converse(audio_filename: str):
-    EXIT_CONDITIONS: list = ["exit"]
+    EXIT_CONDITION: str = "exit"
 
     assistant = VoiceAssistant()
     assistant.speak("Hello! Chat with GPT and I will speak it's responses!")
@@ -24,7 +24,9 @@ def converse(audio_filename: str):
             speech_text = assistant.listen(audio_filename)
             print(f"User Speech Text: {speech_text} \n")
 
-            if speech_text in EXIT_CONDITIONS:
+            if EXIT_CONDITION in speech_text.strip().lower():
+            
+                print("User initiating end of Conversation...")
                 assistant.speak("Goodbye!")
                 print("Exiting program...")
                 break
@@ -35,5 +37,5 @@ def converse(audio_filename: str):
             assistant.speak(gpt_response_msg)
 
         except KeyboardInterrupt:
-            print("closing via keyboard interrupt")
+            print("Closing via keyboard interrupt")
             sys.exit(0)
