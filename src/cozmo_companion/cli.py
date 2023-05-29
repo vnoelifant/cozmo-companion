@@ -25,13 +25,15 @@ def converse(audio_filename: str):
         try:
             speech_text = assistant.listen(audio_filename)
 
+            if speech_text in EXIT_CONDITION:
+                print("Exiting program...")
+                break
+
             gpt_response_msg = assistant.get_gpt_completion(speech_text)
 
             assistant.speak(gpt_response_msg)
 
-            if speech_text in EXIT_CONDITION:
-                print("Exiting program...")
-                break
+
 
         except KeyboardInterrupt:
             print("closing via keyboard interrupt")
