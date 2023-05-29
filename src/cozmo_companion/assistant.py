@@ -36,12 +36,12 @@ class VoiceAssistant:
             {"role": "system", "content": "You are a helpful, friendly assistant"}
         ]
 
-    def listen(self, filename):
+    def listen(self, audio_filename):
         """
         Function to record audio and transcribe recorded speech
         """
         curr_dir = os.getcwd()
-        speech_out = os.path.join(curr_dir, "wav_output", filename + ".wav")
+        speech_out = os.path.join(curr_dir, "wav_output", audio_filename + ".wav")
 
         print("starting recording process")
         recorder = Recorder(speech_out)

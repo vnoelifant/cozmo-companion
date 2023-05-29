@@ -13,7 +13,7 @@ app = typer.Typer()
 
 
 @app.command()
-def converse(filename: str):
+def converse(audio_filename: str):
     EXIT_CONDITION: str = "exit"
 
     assistant = VoiceAssistant()
@@ -23,7 +23,7 @@ def converse(filename: str):
 
     while True:
         try:
-            speech_text = assistant.listen(filename)
+            speech_text = assistant.listen(audio_filename)
 
             gpt_response_msg = assistant.get_gpt_completion(speech_text)
 
