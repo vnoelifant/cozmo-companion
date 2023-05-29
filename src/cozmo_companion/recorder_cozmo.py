@@ -46,10 +46,10 @@ class Recorder:
                 data_chunk=array('h',data)
                 vol=max(data_chunk)
                 if(vol>=self.THRESHOLD):
-                    print("something said")
+                    print("Something Said")
                     frames.append(data)
                 else:
-                    print("nothing")
+                    print("Nothing Said")
                 # print("\n")
             #print(len(frames))
             self.is_recording = False

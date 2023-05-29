@@ -5,6 +5,7 @@ import traceback
 
 import openai
 import typer
+
 from decouple import config
 
 from .dialogue_cozmo import Dialogue
@@ -15,6 +16,24 @@ app = typer.Typer()
 openai.api_key = config("OPENAI_API_KEY")
 
 EXIT_CONDITION: str = "exit"
+GPT_MODEL: str = "gpt-3.5-turbo"
+max_tokens: int = 1000
+temperature: int = 1.2
+
+
+def get_completion(prompt, model=GPT_MODEL):
+    messages = [{"role": "user", "content": prompt}]
+
+    gpt_response = openai.ChatCompletion.create(
+        model=GPT_MODEL,
+        max_tokens=max_tokens,
+        temperature=temperature,
+        messages=messages,
+    )
+
+    gpt_response_msg = gpt_response["choices"][0]["message"]["content"]
+
+    return gpt_response_msg
 
 
 @app.command()
@@ -37,16 +56,7 @@ def converse(filename: str):
 
             speech_text = my_convo.transcribe_audio()
 
-            messages = [{"role": "user", "content": speech_text}]
-
-            gpt_response = openai.ChatCompletion.create(
-                model="gpt-3.5-turbo",
-                max_tokens=1000,
-                temperature=1.2,
-                messages=messages,
-            )
-
-            gpt_response_msg = gpt_response["choices"][0]["message"]["content"]
+            gpt_response_msg = get_completion(speech_text)
 
             my_convo.get_cozmo_response(gpt_response_msg)
 
