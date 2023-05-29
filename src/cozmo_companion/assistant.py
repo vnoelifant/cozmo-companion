@@ -97,15 +97,15 @@ class VoiceAssistant:
                 "content": gpt_response_msg,
             }
         )
-        print("GPT RESPONSE MESSAGE: ", gpt_response_msg)
+        print("GPT Response Message: ", gpt_response_msg)
 
         return gpt_response_msg
 
-    def speak(self, gpt_response):
+    def speak(self, text):
         """
-        Function to get Cozmo to convert GPT text response to speech
+        Function for Cozmo robot to convert text input to speech
         """
 
-        # Cozmo speaks the text response from Watson
+        # Cozmo speaks the text input
         with anki_vector.Robot() as robot:
-            robot.behavior.say_text(gpt_response)
+            robot.behavior.say_text(text)
