@@ -23,16 +23,6 @@ from .constants import (
     TEMPERATURE,
 )
 
-# Initialize speech to text service. Source: https://cloud.ibm.com/apidocs/speech-to-text
-authenticator = IAMAuthenticator(config("IAM_APIKEY_STT"))
-
-speech_to_text = SpeechToTextV1(authenticator=authenticator)
-
-speech_to_text.set_service_url(config("URL_STT"))
-
-# Configure Open AI API KEY
-openai.api_key = config("OPENAI_API_KEY")
-
 
 class VoiceAssistant:
 
@@ -60,6 +50,14 @@ class VoiceAssistant:
         recorder.save_to_file()
         print("Transcribing audio....\n")
 
+        # Initialize speech to text service. Source: https://cloud.ibm.com/apidocs/speech-to-text
+        authenticator = IAMAuthenticator(config("IAM_APIKEY_STT"))
+
+        speech_to_text = SpeechToTextV1(authenticator=authenticator)
+
+        speech_to_text.set_service_url(config("URL_STT"))
+
+
         with open((speech_out), "rb") as audio_file:
             speech_result = speech_to_text.recognize(
                 audio=audio_file,
@@ -79,6 +77,9 @@ class VoiceAssistant:
         Function to generate a GPT response to the user's text input
         """
 
+        # Configure Open AI API KEY
+        openai.api_key = config("OPENAI_API_KEY")
+        
         # Add the user's input to the Chat GPT history log
         self.conversation_history.append({"role": "user", "content": text})
 
