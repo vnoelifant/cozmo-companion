@@ -12,7 +12,7 @@ from decouple import config
 from ibm_cloud_sdk_core.authenticators import IAMAuthenticator
 from ibm_watson import SpeechToTextV1
 from PIL import Image
-from .recorder_cozmo import Recorder
+from .recorder import Recorder
 from .constants import (
     CONTENT_TYPE,
     WORD_ALTERNATIVE_THRESHOLDS,
@@ -57,7 +57,6 @@ class VoiceAssistant:
 
         speech_to_text.set_service_url(config("URL_STT"))
 
-
         with open((speech_out), "rb") as audio_file:
             speech_result = speech_to_text.recognize(
                 audio=audio_file,
@@ -79,7 +78,7 @@ class VoiceAssistant:
 
         # Configure Open AI API KEY
         openai.api_key = config("OPENAI_API_KEY")
-        
+
         # Add the user's input to the Chat GPT history log
         self.conversation_history.append({"role": "user", "content": text})
 

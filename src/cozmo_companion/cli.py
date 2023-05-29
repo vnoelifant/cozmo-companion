@@ -7,14 +7,13 @@ import typer
 
 from decouple import config
 
-from .dialogue_cozmo import VoiceAssistant
+from .assistant import VoiceAssistant
 
 app = typer.Typer()
 
 
 @app.command()
 def converse(filename: str):
-
     EXIT_CONDITION: str = "exit"
 
     assistant = VoiceAssistant()
@@ -24,7 +23,6 @@ def converse(filename: str):
 
     while True:
         try:
-
             speech_text = assistant.listen(filename)
 
             gpt_response_msg = assistant.get_gpt_completion(speech_text)
