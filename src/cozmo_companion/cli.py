@@ -18,7 +18,7 @@ def converse(audio_filename: str):
 
     assistant = VoiceAssistant()
     assistant.speak(
-        "Hello! Ask GPT anything and I will echo back what it says in response!"
+        "Hello! Chat with GPT anything and I will speak it's responses!"
     )
 
     while True:

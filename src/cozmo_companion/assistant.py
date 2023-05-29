@@ -83,21 +83,28 @@ class VoiceAssistant:
         self.conversation_history.append({"role": "user", "content": text})
 
         gpt_response = openai.ChatCompletion.create(
-            model=self.GPT_MODEL,
+            model=GPT_MODEL,
             max_tokens=MAX_TOKENS,
             temperature=TEMPERATURE,
             messages=self.conversation_history,
         )
 
-        gpt_response_msg = gpt_response.choices[0].message.content
+        gpt_response_role = gpt_response["choices"][0]["message"]["role"]
+        gpt_response_msg = gpt_response["choices"][0]["message"]["content"]
 
         self.conversation_history.append(
             {
-                "role": gpt_response_msg.choices[0].message.role,
+                "role": gpt_response_role,
                 "content": gpt_response_msg,
             }
         )
-        print("GPT Response Message: ", gpt_response_msg)
+     
+        print("Consversation Log: ", self.conversation_history)
+        print()
+        role = self.conversation_history[-1]["role"].strip()
+        message = self.conversation_history[-1]["content"].strip()
+        
+        print(f"{role}: {message}\n")
 
         return gpt_response_msg
 
