@@ -46,7 +46,7 @@ class VoiceAssistant:
         print("starting recording process")
         recorder = Recorder(speech_out)
 
-        print("Please say something nice into the microphone\n")
+        print("Please say something to the microphone\n")
         recorder.save_to_file()
         print("Transcribing audio....\n")
 
@@ -67,7 +67,6 @@ class VoiceAssistant:
             ).get_result()
 
             speech_text = speech_result["results"][0]["alternatives"][0]["transcript"]
-            print("User Speech Text: " + speech_text + "\n")
 
         return speech_text
 
@@ -98,13 +97,6 @@ class VoiceAssistant:
                 "content": gpt_response_msg,
             }
         )
-     
-        print("Consversation Log: ", self.conversation_history)
-        print()
-        role = self.conversation_history[-1]["role"].strip()
-        message = self.conversation_history[-1]["content"].strip()
-        
-        print(f"{role}: {message}\n")
 
         return gpt_response_msg
 
