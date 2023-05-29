@@ -1,27 +1,20 @@
 import asyncio
 import json
+import os
 import sys
 import time
 import traceback
-import os
 
-import cozmo
 import anki_vector
 import openai
 from decouple import config
 from ibm_cloud_sdk_core.authenticators import IAMAuthenticator
 from ibm_watson import SpeechToTextV1
 from PIL import Image
+
+from .constants import (CONTENT_TYPE, GPT_MODEL, KEYWORDS, KEYWORDS_THRESHOLD,
+                        MAX_TOKENS, TEMPERATURE, WORD_ALTERNATIVE_THRESHOLDS)
 from .recorder import Recorder
-from .constants import (
-    CONTENT_TYPE,
-    WORD_ALTERNATIVE_THRESHOLDS,
-    KEYWORDS,
-    KEYWORDS_THRESHOLD,
-    GPT_MODEL,
-    MAX_TOKENS,
-    TEMPERATURE,
-)
 
 # Initialize speech to text service. Source: https://cloud.ibm.com/apidocs/speech-to-text
 authenticator = IAMAuthenticator(config("IAM_APIKEY_STT"))

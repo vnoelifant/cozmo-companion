@@ -4,7 +4,6 @@ import sys
 import traceback
 
 import typer
-
 from decouple import config
 
 from .assistant import VoiceAssistant
