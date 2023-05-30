@@ -42,7 +42,6 @@ class VoiceAssistant:
     """
 
     def __init__(self):
-        self.recorder = Recorder()
         self.conversation_history = [
             {"role": "system", "content": "You are a helpful, friendly assistant"}
         ]
@@ -51,20 +50,26 @@ class VoiceAssistant:
         """
         Function to record audio and transcribe recorded speech
         """
+
+        if not os.path.exists("wav_output"):
+            os.makedirs("wav_output")
+
         curr_dir = os.getcwd()
-        audio_file = os.path.join(curr_dir, "wav_output", audio_filename + ".wav")
+        audio_file = os.path.join(curr_dir, "wav_output", f"{audio_filename}.wav")
 
         print("Starting recording process")
 
+        recorder = Recorder()
+
         print("Please say something to the microphone\n")
 
-        self.recorder.record(audio_file)
+        recorder.record(audio_file)
 
         print("Transcribing audio....\n")
 
-        with open((audio_file), "rb") as audio:
+        with open((audio_file), "rb") as audio_file_obj:
             speech_result = speech_to_text.recognize(
-                audio=audio,
+                audio=audio_file_obj,
                 content_type=CONTENT_TYPE,
                 word_alternatives_threshold=WORD_ALTERNATIVE_THRESHOLDS,
                 keywords=KEYWORDS,

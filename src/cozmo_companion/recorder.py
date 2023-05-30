@@ -11,9 +11,9 @@ class Recorder:
         self.CHUNK_SIZE = 1024
         self.FORMAT = pyaudio.paInt16
         self.RATE = 44100
+        self.RECORD_SECONDS = 5
         self.silent_count = 0
         self.is_recording = True
-        self.RECORD_SECONDS = 5
 
     def record(self, audio_file):
         # create an instance of pyAudio
@@ -40,7 +40,7 @@ class Recorder:
             Because most audio systems work with chunks (also called frames or blocks), the system will need to read chunks
             of data. One chunk in this case is 1024 samples. Thus if each iteration (chunk) takes 1024 samples, the for
             loop will have to loop 220,500/1024 = 215 times.
-            
+
             So basically the system reads (220,500/1024) = 215.33 chunks out of the buffer until it has saved the
             whole 5 seconds of audio data.
             """
