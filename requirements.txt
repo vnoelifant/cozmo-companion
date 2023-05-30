@@ -1,24 +1,34 @@
+aiogrpc==1.8
 aiohttp==3.8.4
 aiosignal==1.3.1
+anki-vector==0.6.0
 async-timeout==4.0.2
 asynctest==0.13.0
 attrs==23.1.0
 black==23.3.0
 build==0.10.0
 certifi==2022.12.7
+cffi==1.15.1
 charset-normalizer==3.1.0
 click==8.1.3
 colorama==0.4.6
 cozmo==1.4.10
--e git+https://github.com/vnoelifant/cozmo-companion@48d45b58de68b2e36d793d756ca8346733a04270#egg=cozmo_companion
+-e git+https://github.com/vnoelifant/cozmo-companion@c7f753b01430ce954762ac7a71563104f76d226e#egg=cozmo_companion
 cozmoclad==3.4.0
+cryptography==40.0.2
+Flask==2.2.5
 frozenlist==1.3.3
+googleapis-common-protos==1.59.0
+grpcio==1.54.2
 ibm-cloud-sdk-core==3.16.5
 ibm-watson==7.0.0
 idna==3.4
 importlib-metadata==6.6.0
 isort==5.11.5
+itsdangerous==2.1.2
+Jinja2==3.1.2
 markdown-it-py==2.2.0
+MarkupSafe==2.1.2
 mdurl==0.1.2
 multidict==6.0.4
 mypy-extensions==1.0.0
@@ -28,7 +38,9 @@ packaging==23.1
 pathspec==0.11.1
 Pillow==9.5.0
 platformdirs==3.5.0
+protobuf==3.20.0
 PyAudio==0.2.13
+pycparser==2.21
 Pygments==2.15.1
 PyJWT==2.6.0
 pyproject_hooks==1.0.0
@@ -45,5 +57,6 @@ typer==0.9.0
 typing_extensions==4.5.0
 urllib3==1.26.15
 websocket-client==1.1.0
+Werkzeug==2.2.3
 yarl==1.9.2
 zipp==3.15.0

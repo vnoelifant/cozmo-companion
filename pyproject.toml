@@ -23,7 +23,8 @@ dependencies = [
   "ibm-watson",
   "typer[all]",
   "PyAudio",
-  "cozmo[camera]",
+  "openai",
+  "anki_vector",
 ]
 
 [project.urls]
