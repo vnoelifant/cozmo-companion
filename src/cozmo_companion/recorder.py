@@ -28,23 +28,23 @@ class Recorder:
             frames_per_buffer=self.CHUNK_SIZE,
         )
 
-        # starting recording
         frames = []
 
         while self.is_recording:
             """
-            This operation is in charge of controlling how many iterations loop for makes. In every iteration,
-            1024 bytes are recorded (data = stream.read(CHUNK)) Therefore, to record 5 seconds, we have to take 44,100 samples/second * 5 seconds
-            = 220,500 samples. Finally, if each iteration (chunk) takes 1024 samples, the for will have to loop 220,500/1024 times = 215 samples
+            This operation is in charge of controlling how many chunks of the buffer the system reads before
+            saving self.RECORD_SECONDS of data.
 
-            44100 Hz - or 44100 samples per second. So you are basically reading out that many digitized values from your device.
-            So if you want to record 5 seconds, you will have to save
-            5⋅44100 samples. Because most audio systems work with chunks (also called frames or blocks), the program will now read chunks of data.
-            One chunk in your case is 1024 samples. So basically the system reads 215.33 chunks out of the buffer until it has saved the
+            For example, to record 5 seconds, we have to save 44,100 samples/second * 5 seconds = 220,500 samples.
+
+            Because most audio systems work with chunks (also called frames or blocks), the system will need to read chunks
+            of data. One chunk in this case is 1024 samples. Thus if each iteration (chunk) takes 1024 samples, the for
+            loop will have to loop 220,500/1024 = 215 times.
+            
+            So basically the system reads (220,500/1024) = 215.33 chunks out of the buffer until it has saved the
             whole 5 seconds of audio data.
             """
             for i in range(0, int(self.RATE / self.CHUNK_SIZE * self.RECORD_SECONDS)):
-                # print("recording time",int(self.RATE/self.CHUNK_SIZE*self.RECORD_SECONDS))
                 data = stream.read(self.CHUNK_SIZE)
                 data_chunk = array("h", data)
                 vol = max(data_chunk)
@@ -53,10 +53,7 @@ class Recorder:
                     frames.append(data)
                 else:
                     print("Nothing Said")
-                # print("\n")
-            # print(len(frames))
             self.is_recording = False
-            # print("exiting loop: recording bool", self.is_recording)
 
         sample_width = p.get_sample_size(self.FORMAT)
         stream.stop_stream()
