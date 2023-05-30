@@ -12,8 +12,15 @@ from ibm_cloud_sdk_core.authenticators import IAMAuthenticator
 from ibm_watson import SpeechToTextV1
 from PIL import Image
 
-from .constants import (CONTENT_TYPE, GPT_MODEL, KEYWORDS, KEYWORDS_THRESHOLD,
-                        MAX_TOKENS, TEMPERATURE, WORD_ALTERNATIVE_THRESHOLDS)
+from .constants import (
+    CONTENT_TYPE,
+    GPT_MODEL,
+    KEYWORDS,
+    KEYWORDS_THRESHOLD,
+    MAX_TOKENS,
+    TEMPERATURE,
+    WORD_ALTERNATIVE_THRESHOLDS,
+)
 from .recorder import Recorder
 
 # Initialize speech to text service. Source: https://cloud.ibm.com/apidocs/speech-to-text
@@ -23,7 +30,7 @@ speech_to_text = SpeechToTextV1(authenticator=authenticator)
 
 speech_to_text.set_service_url(config("URL_STT"))
 
- # Configure Open AI API KEY
+# Configure Open AI API KEY
 openai.api_key = config("OPENAI_API_KEY")
 
 
@@ -35,6 +42,7 @@ class VoiceAssistant:
     """
 
     def __init__(self):
+        self.recorder = Recorder()
         self.conversation_history = [
             {"role": "system", "content": "You are a helpful, friendly assistant"}
         ]
@@ -44,18 +52,19 @@ class VoiceAssistant:
         Function to record audio and transcribe recorded speech
         """
         curr_dir = os.getcwd()
-        speech_out = os.path.join(curr_dir, "wav_output", audio_filename + ".wav")
+        audio_file = os.path.join(curr_dir, "wav_output", audio_filename + ".wav")
 
-        print("starting recording process")
-        recorder = Recorder(speech_out)
+        print("Starting recording process")
 
         print("Please say something to the microphone\n")
-        recorder.save_to_file()
+
+        self.recorder.record(audio_file)
+
         print("Transcribing audio....\n")
 
-        with open((speech_out), "rb") as audio_file:
+        with open((audio_file), "rb") as audio:
             speech_result = speech_to_text.recognize(
-                audio=audio_file,
+                audio=audio,
                 content_type=CONTENT_TYPE,
                 word_alternatives_threshold=WORD_ALTERNATIVE_THRESHOLDS,
                 keywords=KEYWORDS,

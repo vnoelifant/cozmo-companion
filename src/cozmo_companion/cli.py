@@ -24,7 +24,6 @@ def converse(audio_filename: str):
             print(f"User Speech Text: {speech_text} \n")
 
             if EXIT_CONDITION in speech_text.strip().lower():
-            
                 print("User initiating end of Conversation...")
                 assistant.speak("Goodbye!")
                 print("Exiting program...")

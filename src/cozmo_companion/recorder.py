@@ -6,8 +6,7 @@ import pyaudio
 
 
 class Recorder:
-    def __init__(self, path):
-        self.PATH = path
+    def __init__(self):
         self.THRESHOLD = 500
         self.CHUNK_SIZE = 1024
         self.FORMAT = pyaudio.paInt16
@@ -16,7 +15,7 @@ class Recorder:
         self.is_recording = True
         self.RECORD_SECONDS = 5
 
-    def record(self):
+    def record(self, audio_file):
         # create an instance of pyAudio
         p = pyaudio.PyAudio()
         # create a stream
@@ -38,10 +37,10 @@ class Recorder:
             1024 bytes are recorded (data = stream.read(CHUNK)) Therefore, to record 5 seconds, we have to take 44,100 samples/second * 5 seconds
             = 220,500 samples. Finally, if each iteration (chunk) takes 1024 samples, the for will have to loop 220,500/1024 times = 215 samples
 
-            44100 Hz - or 44100 samples per second. So you are basicly reading out that many digitized values from your device.
+            44100 Hz - or 44100 samples per second. So you are basically reading out that many digitized values from your device.
             So if you want to record 5 seconds, you will have to save
             5⋅44100 samples. Because most audio systems work with chunks (also called frames or blocks), the program will now read chunks of data.
-            One chunk in your case is 1024 samples. So basicly the system reads 215.33 chunks out of the buffer until it has saved the
+            One chunk in your case is 1024 samples. So basically the system reads 215.33 chunks out of the buffer until it has saved the
             whole 5 seconds of audio data.
             """
             for i in range(0, int(self.RATE / self.CHUNK_SIZE * self.RECORD_SECONDS)):
@@ -64,13 +63,13 @@ class Recorder:
         stream.close()
         p.terminate()
         print("Recording Complete")
-        return sample_width, frames
 
-    def save_to_file(self):
-        sample_width, frames = self.record()
-        wf = wave.open(self.PATH, "wb")
-        wf.setnchannels(1)
-        wf.setsampwidth(sample_width)
-        wf.setframerate(self.RATE)
-        wf.writeframes(b"".join(frames))  # append frames recorded to file
-        wf.close()
+        print("Saving speech audio to file")
+        self.save_audio_to_file(sample_width, frames, audio_file)
+
+    def save_audio_to_file(self, sample_width, frames, audio_file):
+        with wave.open(audio_file, "wb") as wf:
+            wf.setnchannels(1)
+            wf.setsampwidth(sample_width)
+            wf.setframerate(self.RATE)
+            wf.writeframes(b"".join(frames))  # append frames recorded to file

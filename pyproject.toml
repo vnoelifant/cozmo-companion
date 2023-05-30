@@ -23,7 +23,7 @@ dependencies = [
   "ibm-watson",
   "typer[all]",
   "PyAudio",
-  "openai"
+  "openai",
   "anki_vector",
 ]
 
