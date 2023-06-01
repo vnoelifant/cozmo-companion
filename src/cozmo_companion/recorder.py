@@ -6,7 +6,8 @@ import pyaudio
 
 
 class Recorder:
-    def __init__(self):
+    def __init__(self, audio_file):
+        self.AUDIO_FILE = audio_file
         self.THRESHOLD = 500
         self.CHUNK_SIZE = 1024
         self.FORMAT = pyaudio.paInt16
@@ -15,7 +16,7 @@ class Recorder:
         self.silent_count = 0
         self.is_recording = True
 
-    def record(self, audio_file):
+    def record(self):
         # create an instance of pyAudio
         p = pyaudio.PyAudio()
         # create a stream
@@ -62,10 +63,10 @@ class Recorder:
         print("Recording Complete")
 
         print("Saving speech audio to file")
-        self.save_audio_to_file(sample_width, frames, audio_file)
+        self.save_audio_to_file(sample_width, frames, self.AUDIO_FILE)
 
     def save_audio_to_file(self, sample_width, frames, audio_file):
-        with wave.open(audio_file, "wb") as wf:
+        with wave.open(self.AUDIO_FILE, "wb") as wf:
             wf.setnchannels(1)
             wf.setsampwidth(sample_width)
             wf.setframerate(self.RATE)
