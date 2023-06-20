@@ -43,7 +43,7 @@ class VoiceAssistant:
 
     def __init__(self):
         self.conversation_history = [
-            {"role": "system", "content": "You are a helpful, friendly assistant"}
+            {"role": "system", "content": "You are a helpful, friendly assistant."}
         ]
 
     def listen(self, audio_filename):
