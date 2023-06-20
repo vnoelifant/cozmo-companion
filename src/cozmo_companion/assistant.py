@@ -43,7 +43,7 @@ class VoiceAssistant:
 
     def __init__(self):
         self.conversation_history = [
-            {"role": "system", "content": "You are a helpful, friendly assistant"}
+            {"role": "system", "content": "You are a helpful, friendly assistant."}
         ]
 
     def listen(self, audio_filename):
@@ -59,17 +59,17 @@ class VoiceAssistant:
 
         print("Starting recording process")
 
-        recorder = Recorder()
+        recorder = Recorder(audio_file)
 
         print("Please say something to the microphone\n")
 
-        recorder.record(audio_file)
+        recorder.record()
 
         print("Transcribing audio....\n")
 
-        with open((audio_file), "rb") as audio_file_obj:
+        with open((audio_file), "rb") as audio:
             speech_result = speech_to_text.recognize(
-                audio=audio_file_obj,
+                audio=audio,
                 content_type=CONTENT_TYPE,
                 word_alternatives_threshold=WORD_ALTERNATIVE_THRESHOLDS,
                 keywords=KEYWORDS,
