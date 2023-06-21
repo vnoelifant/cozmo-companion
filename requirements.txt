@@ -13,7 +13,7 @@ charset-normalizer==3.1.0
 click==8.1.3
 colorama==0.4.6
 cozmo==1.4.10
--e git+https://github.com/vnoelifant/cozmo-companion@c7f753b01430ce954762ac7a71563104f76d226e#egg=cozmo_companion
+-e git+https://github.com/vnoelifant/cozmo-companion@7c8ae6a8c97c9100336c990d9e04510798590d74#egg=cozmo_companion
 cozmoclad==3.4.0
 cryptography==40.0.2
 Flask==2.2.5
@@ -31,6 +31,7 @@ markdown-it-py==2.2.0
 MarkupSafe==2.1.2
 mdurl==0.1.2
 multidict==6.0.4
+mypy==1.3.0
 mypy-extensions==1.0.0
 numpy==1.21.6
 openai==0.27.7
