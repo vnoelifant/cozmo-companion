@@ -13,7 +13,7 @@ charset-normalizer==3.1.0
 click==8.1.3
 colorama==0.4.6
 cozmo==1.4.10
--e git+https://github.com/vnoelifant/cozmo-companion@7c8ae6a8c97c9100336c990d9e04510798590d74#egg=cozmo_companion
+-e git+https://github.com/vnoelifant/cozmo-companion@4065f2783b1300c890c6ed7196df1c3746fd0f81#egg=cozmo_companion
 cozmoclad==3.4.0
 cryptography==40.0.2
 Flask==2.2.5
@@ -42,6 +42,7 @@ platformdirs==3.5.0
 protobuf==3.20.0
 PyAudio==0.2.13
 pycparser==2.21
+pydub==0.25.1
 Pygments==2.15.1
 PyJWT==2.6.0
 pyproject_hooks==1.0.0
