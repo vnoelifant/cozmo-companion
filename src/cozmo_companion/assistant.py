@@ -5,30 +5,39 @@ import sys
 import time
 import traceback
 
-import anki_vector
 import openai
 from decouple import config
 from ibm_cloud_sdk_core.authenticators import IAMAuthenticator
-from ibm_watson import SpeechToTextV1
-from PIL import Image
+from ibm_watson import SpeechToTextV1, TextToSpeechV1
+from pydub import AudioSegment
+from pydub.playback import play
 
 from .constants import (
+    AUDIO_FORMAT,
     CONTENT_TYPE,
     GPT_MODEL,
     KEYWORDS,
     KEYWORDS_THRESHOLD,
     MAX_TOKENS,
     TEMPERATURE,
+    VOICE,
     WORD_ALTERNATIVE_THRESHOLDS,
 )
 from .recorder import Recorder
 
-# Initialize speech to text service. Source: https://cloud.ibm.com/apidocs/speech-to-text
+# Initialize speech to text service.
 authenticator = IAMAuthenticator(config("IAM_APIKEY_STT"))
 
 speech_to_text = SpeechToTextV1(authenticator=authenticator)
 
 speech_to_text.set_service_url(config("URL_STT"))
+
+# Initialize text to speech service.
+authenticator = IAMAuthenticator(config("IAM_APIKEY_TTS"))
+
+text_to_speech = TextToSpeechV1(authenticator=authenticator)
+
+text_to_speech.set_service_url(config("URL_TTS"))
 
 # Configure Open AI API KEY
 openai.api_key = config("OPENAI_API_KEY")
@@ -50,20 +59,26 @@ class VoiceAssistant:
             }
         ]
 
-    def listen(self, audio_filename):
-        """
-        Function to record audio and transcribe recorded speech
-        """
-
+    @staticmethod
+    def create_wav_file(filename):
         if not os.path.exists("wav_output"):
             os.makedirs("wav_output")
 
         curr_dir = os.getcwd()
-        audio_file = os.path.join(curr_dir, "wav_output", f"{audio_filename}.wav")
+        speech_file = os.path.join(curr_dir, "wav_output", f"{filename}.wav")
+
+        return speech_file
+
+    def listen(self, filename):
+        """
+        Function to record audio and transcribe recorded speech
+        """
+
+        user_speech_file = VoiceAssistant.create_wav_file(filename)
 
         print("Starting recording process")
 
-        recorder = Recorder(audio_file)
+        recorder = Recorder(user_speech_file)
 
         print("Please say something to the microphone\n")
 
@@ -71,7 +86,7 @@ class VoiceAssistant:
 
         print("Transcribing audio....\n")
 
-        with open((audio_file), "rb") as audio:
+        with open((user_speech_file), "rb") as audio:
             speech_result = speech_to_text.recognize(
                 audio=audio,
                 content_type=CONTENT_TYPE,
@@ -115,9 +130,21 @@ class VoiceAssistant:
 
     def speak(self, text):
         """
-        Function for Cozmo robot to convert text input to speech
+        Function for Watson to convert text input to speech
         """
 
-        # Cozmo speaks the text input
-        with anki_vector.Robot() as robot:
-            robot.behavior.say_text(text)
+        bot_speech_file = VoiceAssistant.create_wav_file("bot_speech")
+
+        with open(bot_speech_file, "wb") as audio_out:
+            audio_out.write(
+                text_to_speech.synthesize(
+                    text,
+                    voice=VOICE,
+                    accept=AUDIO_FORMAT,
+                )
+                .get_result()
+                .content
+            )
+
+        bot_speech_response = AudioSegment.from_wav(bot_speech_file)
+        play(bot_speech_response)

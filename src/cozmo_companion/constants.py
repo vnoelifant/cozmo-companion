@@ -5,3 +5,5 @@ KEYWORDS_THRESHOLD = 0.5
 GPT_MODEL = "gpt-3.5-turbo"
 MAX_TOKENS = 1000
 TEMPERATURE = 1.2
+AUDIO_FORMAT = "audio/wav"
+VOICE = "en-US_AllisonV3Voice"
