@@ -5,21 +5,19 @@ import sys
 import time
 import traceback
 
-import openai
+import marvin
 from decouple import config
 from ibm_cloud_sdk_core.authenticators import IAMAuthenticator
 from ibm_watson import SpeechToTextV1, TextToSpeechV1
+from marvin import AIApplication
 from pydub import AudioSegment
 from pydub.playback import play
 
 from .constants import (
     AUDIO_FORMAT,
     CONTENT_TYPE,
-    GPT_MODEL,
     KEYWORDS,
     KEYWORDS_THRESHOLD,
-    MAX_TOKENS,
-    TEMPERATURE,
     VOICE,
     WORD_ALTERNATIVE_THRESHOLDS,
 )
@@ -40,7 +38,10 @@ text_to_speech = TextToSpeechV1(authenticator=authenticator)
 text_to_speech.set_service_url(config("URL_TTS"))
 
 # Configure Open AI API KEY
-openai.api_key = config("OPENAI_API_KEY")
+marvin.settings.openai.api_key = config("OPENAI_API_KEY")
+
+# Confuigure Marvin LLM
+marvin.settings.llm_model = config("MARVIN_LLM_MODEL")
 
 
 class VoiceAssistant:
@@ -51,13 +52,9 @@ class VoiceAssistant:
     """
 
     def __init__(self):
-        self.conversation_history = [
-            {
-                "role": "system",
-                "content": "You are a helpful, friendly assistant.If you detect \
-             negative sentiment from the user, reply with a joke.",
-            }
-        ]
+        self.chatbot = AIApplication(description=("A friendly, supportive chatbot."))
+
+        self.conversation_history = []
 
     @staticmethod
     def create_wav_file(filename):
@@ -95,9 +92,9 @@ class VoiceAssistant:
                 keywords_threshold=KEYWORDS_THRESHOLD,
             ).get_result()
 
-            speech_text = speech_result["results"][0]["alternatives"][0]["transcript"]
+            user_speech_text = speech_result["results"][0]["alternatives"][0]["transcript"]
 
-        return speech_text
+        return user_speech_text
 
     def get_gpt_completion(self, text):
         """
@@ -107,19 +104,13 @@ class VoiceAssistant:
         # Add the user's input to the Chat GPT history log
         self.conversation_history.append({"role": "user", "content": text})
 
-        gpt_response = openai.ChatCompletion.create(
-            model=GPT_MODEL,
-            max_tokens=MAX_TOKENS,
-            temperature=TEMPERATURE,
-            messages=self.conversation_history,
-        )
+        gpt_response = self.chatbot(text)
 
-        gpt_response_role = gpt_response["choices"][0]["message"]["role"]
-        gpt_response_msg = gpt_response["choices"][0]["message"]["content"]
+        gpt_response_msg = gpt_response.content
 
         self.conversation_history.append(
             {
-                "role": gpt_response_role,
+                "role": "gpt",
                 "content": gpt_response_msg,
             }
         )
