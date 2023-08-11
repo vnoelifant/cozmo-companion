@@ -156,3 +156,5 @@ dmypy.json
 # Ignore .wav files
 wav_output/
 
+# Ignore Marvin test files
+marvin/
