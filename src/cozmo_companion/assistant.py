@@ -1,9 +1,5 @@
-import asyncio
-import json
 import os
-import sys
-import time
-import traceback
+import logging
 
 import marvin
 from decouple import config
@@ -23,41 +19,48 @@ from .constants import (
 )
 from .recorder import Recorder
 
-# Initialize speech to text service.
-authenticator = IAMAuthenticator(config("IAM_APIKEY_STT"))
-
-speech_to_text = SpeechToTextV1(authenticator=authenticator)
-
-speech_to_text.set_service_url(config("URL_STT"))
-
-# Initialize text to speech service.
-authenticator = IAMAuthenticator(config("IAM_APIKEY_TTS"))
-
-text_to_speech = TextToSpeechV1(authenticator=authenticator)
-
-text_to_speech.set_service_url(config("URL_TTS"))
-
-# Configure Open AI API KEY
-marvin.settings.openai.api_key = config("OPENAI_API_KEY")
-
-# Confuigure Marvin LLM
-marvin.settings.llm_model = config("MARVIN_LLM_MODEL")
-
-
 class VoiceAssistant:
 
     """
-    A class to respresent a voice assistant who can listen to voice input, provide a gpt response,
-    and speak the gpt response
+    A class to represent a voice assistant capable of listening to voice input, generating a GPT response,
+    and speaking the GPT response.
     """
 
     def __init__(self):
+        """Initialize the VoiceAssistant and its services."""
+        self._configure_services()
         self.chatbot = AIApplication(description=("A friendly, supportive chatbot."))
 
         self.conversation_history = []
+       
+    def _configure_services(self):
+        """Configure and initialize external services (IBM, Marvin, etc.)."""
+        self.SPEECH_TO_TEXT = self._initialize_ibm_service(config("IAM_APIKEY_STT"), config("URL_STT"))
+        self.TEXT_TO_SPEECH = self._initialize_ibm_service(config("IAM_APIKEY_TTS"), config("URL_TTS"))
+        marvin.settings.openai.api_key = config("OPENAI_API_KEY")
+        marvin.settings.llm_model = config("MARVIN_LLM_MODEL")
 
+    def _initialize_ibm_service(self, api_key, url):
+        """
+        Helper method to initialize IBM services.
+        :param api_key: The API key for the service.
+        :param url: The URL for the service.
+        :return: Initialized IBM service.
+        """
+        authenticator = IAMAuthenticator(api_key)
+        service = None
+        if "speech-to-text" in url:
+            service = SpeechToTextV1(authenticator=authenticator)
+        elif "text-to-speech" in url:
+            service = TextToSpeechV1(authenticator=authenticator)
+        else:
+            raise ValueError(f"Invalid service URL: {url}. Expected 'speech-to-text' or 'text-to-speech' in the URL.")
+        service.set_service_url(url)
+        return service
+    
     @staticmethod
-    def create_wav_file(filename):
+    def _create_wav_file(filename):
+        """Create a WAV file in the designated directory."""
         if not os.path.exists("wav_output"):
             os.makedirs("wav_output")
 
@@ -66,12 +69,10 @@ class VoiceAssistant:
 
         return speech_file
 
-    def listen(self, filename):
-        """
-        Function to record audio and transcribe recorded speech
-        """
-
-        user_speech_file = VoiceAssistant.create_wav_file(filename)
+    def _listen(self, filename):
+        """Record audio and transcribe the recorded speech."""
+    
+        user_speech_file = VoiceAssistant._create_wav_file(filename)
 
         print("Starting recording process")
 
@@ -80,11 +81,13 @@ class VoiceAssistant:
         print("Please say something to the microphone\n")
 
         recorder.record()
+    
 
         print("Transcribing audio....\n")
 
+        
         with open((user_speech_file), "rb") as audio:
-            speech_result = speech_to_text.recognize(
+            speech_result = self.SPEECH_TO_TEXT.recognize(
                 audio=audio,
                 content_type=CONTENT_TYPE,
                 word_alternatives_threshold=WORD_ALTERNATIVE_THRESHOLDS,
@@ -95,47 +98,63 @@ class VoiceAssistant:
             user_speech_text = speech_result["results"][0]["alternatives"][0]["transcript"]
 
         return user_speech_text
+      
 
-    def get_gpt_completion(self, text):
-        """
-        Function to generate a GPT response to the user's text input
-        """
+    def _get_gpt_completion(self, text):
+        """Generate a GPT response to the user's text input."""
 
-        # Add the user's input to the Chat GPT history log
-        self.conversation_history.append({"role": "user", "content": text})
+        try:
+            # Add the user's input to the Chat GPT history log
+            self.conversation_history.append({"role": "user", "content": text})
 
-        gpt_response = self.chatbot(text)
+            gpt_response = self.chatbot(text)
 
-        gpt_response_msg = gpt_response.content
+            gpt_response_msg = gpt_response.content
 
-        self.conversation_history.append(
-            {
-                "role": "gpt",
-                "content": gpt_response_msg,
-            }
-        )
-
-        print("Conversation Log: ", self.conversation_history)
-
-        return gpt_response_msg
-
-    def speak(self, text):
-        """
-        Function for Watson to convert text input to speech
-        """
-
-        bot_speech_file = VoiceAssistant.create_wav_file("bot_speech")
-
-        with open(bot_speech_file, "wb") as audio_out:
-            audio_out.write(
-                text_to_speech.synthesize(
-                    text,
-                    voice=VOICE,
-                    accept=AUDIO_FORMAT,
-                )
-                .get_result()
-                .content
+            self.conversation_history.append(
+                {
+                    "role": "gpt",
+                    "content": gpt_response_msg,
+                }
             )
 
-        bot_speech_response = AudioSegment.from_wav(bot_speech_file)
-        play(bot_speech_response)
+            print("Conversation Log: ", self.conversation_history)
+
+            return gpt_response_msg
+        except Exception as e:
+            logging.error(f"Error getting GPT completion: {e}")
+            return "I'm sorry, I couldn't process that."
+
+    def _speak(self, text):
+        """Convert text input to speech."""
+        try:
+            bot_speech_file = VoiceAssistant._create_wav_file("bot_speech")
+
+            with open(bot_speech_file, "wb") as audio_out:
+                audio_out.write(
+                    self.TEXT_TO_SPEECH.synthesize(
+                        text,
+                        voice=VOICE,
+                        accept=AUDIO_FORMAT,
+                    )
+                    .get_result()
+                    .content
+                )
+
+            bot_speech_response = AudioSegment.from_wav(bot_speech_file)
+            play(bot_speech_response)
+        except Exception as e:
+            logging.error((f"Error during speech synthesis: {e}"))
+
+    def converse(self, filename):
+        """Handle the conversation with the user."""
+        self._speak("Hello! Chat with GPT and I will speak its responses!")
+        while True:
+            user_speech_text = self._listen(filename)
+            print(f"User Speech Text: {user_speech_text} \n")
+            if "exit" in user_speech_text.strip().lower():
+                self._speak("Goodbye!")
+                break
+            gpt_response_msg = self._get_gpt_completion(user_speech_text)
+            print(f"GPT Response Message: {gpt_response_msg} \n")
+            self._speak(gpt_response_msg)

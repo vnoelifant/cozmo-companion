@@ -1,73 +1,113 @@
 import wave
 from array import array
-from struct import pack
 
 import pyaudio
 
 
 class Recorder:
-    def __init__(self, audio_file):
-        self.AUDIO_FILE = audio_file
-        self.THRESHOLD = 500
-        self.CHUNK_SIZE = 1024
-        self.FORMAT = pyaudio.paInt16
-        self.RATE = 44100
-        self.RECORD_SECONDS = 5
-        self.silent_count = 0
+    """Recorder class to capture audio with silence detection and a maximum recording duration."""
+
+    FORMAT = pyaudio.paInt16
+    RATE = 44100
+    CHUNK_SIZE = 1024
+    THRESHOLD = 500
+    CHANNELS = 1
+    SILENCE_THRESHOLD = 100  # Stop after consecutive silent chunks
+
+    def __init__(self, audio_file, record_seconds=5):
+        """
+        Initialize the recorder with target audio file and recording duration.
+
+        Parameters:
+        - audio_file (str): Path to save the recorded audio.
+        - record_seconds (int): Maximum duration to record audio in seconds.
+        - is_recording (bool): Flag if recording is in progress
+        """
+        self.audio_file = audio_file
+        self.record_seconds = record_seconds
         self.is_recording = True
 
-    def record(self):
-        # create an instance of pyAudio
-        p = pyaudio.PyAudio()
-        # create a stream
-        stream = p.open(
-            format=self.FORMAT,
-            channels=1,
-            rate=self.RATE,
-            input=True,
-            output=True,
-            frames_per_buffer=self.CHUNK_SIZE,
-        )
+    def _is_audio_loud(self, data_chunk):
+        """Check if the audio data is above the threshold.
 
+        Parameters:
+        - data_chunk (array): Array of audio data samples.
+
+        Returns:
+        - bool: True if audio is above the threshold, False otherwise.
+        """
+        return max(data_chunk) >= self.THRESHOLD
+    
+    def _is_prolonged_silence(self, silent_chunks):
+        """Check if the number of silent chunks exceeds the silence threshold.
+
+        Parameters:
+        - silent_chunks (int): Number of consecutive silent chunks.
+
+        Returns:
+        - bool: True if prolonged silence is detected, False otherwise.
+        """
+        return silent_chunks >= self.SILENCE_THRESHOLD
+
+    def record(self):
+        """Record audio for a specified duration and save to a file."""
+        p = pyaudio.PyAudio()
         frames = []
 
-        while self.is_recording:
-            """
-            This operation is in charge of controlling how many chunks of the buffer the system reads before
-            saving self.RECORD_SECONDS of data.
+        try:
+            stream =  p.open(
+                format=self.FORMAT,
+                channels=self.CHANNELS,
+                rate=self.RATE,
+                input=True,
+                output=True,
+                frames_per_buffer=self.CHUNK_SIZE,
+            ) 
+            self._record_audio_chunks(stream, frames)
+            print("Recording Complete")
+            self._save_audio_to_file(p.get_sample_size(self.FORMAT), frames)
 
-            For example, to record 5 seconds, we have to save 44,100 samples/second * 5 seconds = 220,500 samples.
+        except Exception as e:
+            print(f"Error while recording: {e}")
+        finally:
+            stream.stop_stream()
+            stream.close()
+            p.terminate()
 
-            Because most audio systems work with chunks (also called frames or blocks), the system will need to read chunks
-            of data. One chunk in this case is 1024 samples. Thus if each iteration (chunk) takes 1024 samples, the for
-            loop will have to loop 220,500/1024 = 215 times.
+    def _record_audio_chunks(self, stream, frames):
+        """Record audio in chunks for the specified duration or until prolonged silence.
 
-            So basically the system reads (220,500/1024) = 215.33 chunks out of the buffer until it has saved the
-            whole 5 seconds of audio data.
-            """
-            for i in range(0, int(self.RATE / self.CHUNK_SIZE * self.RECORD_SECONDS)):
-                data = stream.read(self.CHUNK_SIZE)
-                data_chunk = array("h", data)
-                vol = max(data_chunk)
-                if vol >= self.THRESHOLD:
-                    print("Something Said")
-                    frames.append(data)
-                else:
-                    print("Nothing Said")
-            self.is_recording = False
+        Parameters:
+        - stream (PyAudio Stream): Active audio stream for recording.
+        - frames (list): List to store audio frames.
+        """
+        silent_chunks = 0
+        for _ in range(0, int(self.RATE / self.CHUNK_SIZE * self.record_seconds)): 
+            if not self.is_recording:
+                break
+            data = stream.read(self.CHUNK_SIZE)
+            data_chunk = array("h", data)
+            if self._is_audio_loud(data_chunk):
+                print("Something Said")
+                frames.append(data)
+                silent_chunks = 0
+            else:
+                print("Nothing Said")
+                silent_chunks += 1
+                if self._is_prolonged_silence(silent_chunks):
+                    print("Prolonged silence detected. Stopping recording.")
+                    self.is_recording = False
 
-        sample_width = p.get_sample_size(self.FORMAT)
-        stream.stop_stream()
-        stream.close()
-        p.terminate()
-        print("Recording Complete")
+    def _save_audio_to_file(self, sample_width, frames):
+        """Save recorded audio data to a file.
 
-        print("Saving speech audio to file")
-        self.save_audio_to_file(sample_width, frames, self.AUDIO_FILE)
-
-    def save_audio_to_file(self, sample_width, frames, audio_file):
-        with wave.open(self.AUDIO_FILE, "wb") as wf:
-            wf.setnchannels(1)
+        Parameters:
+        - sample_width (int): Sample width (number of bytes) of the recorded audio.
+        - frames (list): List of recorded audio frames.
+        """
+        with wave.open(self.audio_file, "wb") as wf:
+            wf.setnchannels(self.CHANNELS)
             wf.setsampwidth(sample_width)
             wf.setframerate(self.RATE)
-            wf.writeframes(b"".join(frames))  # append frames recorded to file
+            wf.writeframes(b"".join(frames))
+        print("Saving speech audio to file complete")
