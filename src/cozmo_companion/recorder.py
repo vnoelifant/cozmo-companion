@@ -37,7 +37,7 @@ class Recorder:
         - bool: True if audio is above the threshold, False otherwise.
         """
         return max(data_chunk) >= self.THRESHOLD
-    
+
     def _is_prolonged_silence(self, silent_chunks):
         """Check if the number of silent chunks exceeds the silence threshold.
 
@@ -55,14 +55,14 @@ class Recorder:
         frames = []
 
         try:
-            stream =  p.open(
+            stream = p.open(
                 format=self.FORMAT,
                 channels=self.CHANNELS,
                 rate=self.RATE,
                 input=True,
                 output=True,
                 frames_per_buffer=self.CHUNK_SIZE,
-            ) 
+            )
             self._record_audio_chunks(stream, frames)
             print("Recording Complete")
             self._save_audio_to_file(p.get_sample_size(self.FORMAT), frames)
@@ -82,7 +82,7 @@ class Recorder:
         - frames (list): List to store audio frames.
         """
         silent_chunks = 0
-        for _ in range(0, int(self.RATE / self.CHUNK_SIZE * self.record_seconds)): 
+        for _ in range(0, int(self.RATE / self.CHUNK_SIZE * self.record_seconds)):
             if not self.is_recording:
                 break
             data = stream.read(self.CHUNK_SIZE)

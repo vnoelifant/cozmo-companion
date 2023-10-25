@@ -6,9 +6,9 @@ app = typer.Typer()
 
 
 @app.command()
-def converse(user_speech_filename: str):
+def converse():
     assistant = VoiceAssistant()
     try:
-        assistant.converse(user_speech_filename)
+        assistant.start_session()
     except KeyboardInterrupt:
         print("\nClosing via keyboard interrupt.")
