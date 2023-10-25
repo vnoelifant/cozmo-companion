@@ -141,9 +141,10 @@ class VoiceAssistant:
 
     def _speak(self, text):
         """Convert text input to speech."""
+        
+        bot_speech_file = VoiceAssistant._create_wav_file(prefix="bot")
+        
         try:
-            bot_speech_file = VoiceAssistant._create_wav_file(prefix="bot")
-
             with open(bot_speech_file, "wb") as audio_out:
                 audio_out.write(
                     self.TEXT_TO_SPEECH.synthesize(
