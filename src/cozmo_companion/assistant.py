@@ -31,7 +31,11 @@ class VoiceAssistant:
     def __init__(self):
         """Initialize the VoiceAssistant and its services."""
         self._configure_services()
-        self.chatbot = AIApplication(description=("A friendly, supportive chatbot."))
+        self.chatbot = AIApplication(description=("A friendly, supportive chatbot."
+                                                  "If it detects negative sentimentm it provides an"
+                                                  "empathetic response to the user. Then, it asks the user "
+                                                  "how it can make the user feel better. When the user responds," 
+                                                  "it provides a response based on the user's preference. "))
 
         self.conversation_history = []
 
