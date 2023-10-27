@@ -129,12 +129,12 @@ class VoiceAssistant:
             )
 
     @tool
-    def get_feedback_inquiry(self, user_text: str) -> Optional[str]:
+    def get_feedback_inquiry(self, user_text: str) -> str:
         feedback_phrases = ["joke", "motivational quote"]
         for phrase in feedback_phrases:
             if phrase in user_text.lower():
                 return " Did my response help?"
-        return None
+        return ""
     
     def construct_gpt_prompt(self, text):
         """Construct the GPT-3 prompt based on the user's sentiment."""
