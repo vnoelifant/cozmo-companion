@@ -128,13 +128,13 @@ class VoiceAssistant:
                 "Method failed with status code " + str(ex.code) + ": " + ex.message
             )
 
-    @tool
-    def get_feedback_inquiry(self, user_text: str) -> str:
+    # @tool
+    def get_feedback_inquiry(self, user_text: str) -> Optional[str]:
         feedback_phrases = ["joke", "motivational quote"]
         for phrase in feedback_phrases:
             if phrase in user_text.lower():
                 return " Did my response help?"
-        return ""
+        return None
     
     def construct_gpt_prompt(self, text):
         """Construct the GPT-3 prompt based on the user's sentiment."""
