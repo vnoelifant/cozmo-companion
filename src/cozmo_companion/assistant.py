@@ -132,7 +132,7 @@ class VoiceAssistant:
             )
 
     # @tool
-    def get_feedback_inquiry(self, response_text: str = "", user_text: str = "") -> str:
+    def get_feedback_inquiry(self, user_text: str = "") -> Optional[str]:
         """
         Checks if the user's text contains specific feedback phrases and
         returns an appropriate inquiry string based on the content.
@@ -141,13 +141,13 @@ class VoiceAssistant:
             user_text (str): The text provided by the user.
 
         Returns:
-            str: The feedback inquiry string. Returns an empty string if no match is found.
+            Optional[str]: The feedback inquiry string or None if no match is found.
         """
         feedback_phrases = ["joke", "motivational quote"]
         for phrase in feedback_phrases:
             if phrase in user_text.lower():
                 return " Did my response help?"
-        return response_text
+        return None
 
     def construct_gpt_prompt(self, text):
         """Construct the GPT-3 prompt based on the user's sentiment."""
@@ -164,15 +164,17 @@ class VoiceAssistant:
             gpt_prompt = self.construct_gpt_prompt(text)
             gpt_response_content = self.chatbot(gpt_prompt).content
 
-            appended_response = self.get_feedback_inquiry(gpt_response_content, text)
-            combined_response = gpt_response_content + appended_response  # Combine the original response with the feedback query
+            
+            feedback_inquiry = self.get_feedback_inquiry(text)
+            if feedback_inquiry:
+                gpt_response_content += feedback_inquiry  # Append the feedback inquiry if it exists
 
             self.conversation_history.append(
-                {"role": "gpt", "content": combined_response }
+                {"role": "gpt", "content": gpt_response_content}
             )
             print("Conversation Log: ", self.conversation_history)
 
-            return combined_response
+            return gpt_response_content
         except Exception as e:
             logging.error(f"Error getting GPT completion: {e}", exc_info=True)
             return "I'm sorry, I couldn't process that."
