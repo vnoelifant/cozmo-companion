@@ -11,6 +11,7 @@ from marvin.tools import tool
 from pydub import AudioSegment
 from pydub.playback import play
 from enum import Enum
+from typing import Optional
 
 from .constants import (
     AUDIO_FORMAT,
@@ -128,7 +129,7 @@ class VoiceAssistant:
             )
 
     @tool
-    def get_feedback_inquiry(self, user_text):
+    def get_feedback_inquiry(self, user_text: str) -> Optional[str]:
         feedback_phrases = ["joke", "motivational quote"]
         for phrase in feedback_phrases:
             if phrase in user_text.lower():
