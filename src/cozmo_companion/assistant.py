@@ -23,6 +23,7 @@ from .constants import (
 )
 from .recorder import Recorder
 
+
 @ai_classifier
 class Sentiment(Enum):
     POSITIVE = "POSITIVE"
@@ -39,12 +40,15 @@ class VoiceAssistant:
     def __init__(self):
         """Initialize the VoiceAssistant and its services."""
         self._configure_services()
-        self.chatbot = AIApplication(description=("A friendly, supportive chatbot."
-                                                  "It always provides an empathetic response when it detects"
-                                                  "negative sentiment. For every response to the user, it"
-                                                  "asks the user if its response helped."
-                                                 ),
-                                                 tools=[self.get_feedback_inquiry])
+        self.chatbot = AIApplication(
+            description=(
+                "A friendly, supportive chatbot."
+                "It always provides an empathetic response when it detects"
+                "negative sentiment. For every response to the user, it"
+                "asks the user if its response helped."
+            ),
+            tools=[self.get_feedback_inquiry],
+        )
 
         self.conversation_history = []
 
@@ -91,7 +95,6 @@ class VoiceAssistant:
         speech_file = os.path.join(os.getcwd(), "wav_output", filename)
 
         return speech_file
-    
 
     def _listen(self):
         """Record audio and transcribe the recorded speech."""
@@ -128,15 +131,15 @@ class VoiceAssistant:
                 "Method failed with status code " + str(ex.code) + ": " + ex.message
             )
 
-    @tool
-    def get_feedback_inquiry(self, *, user_text: str) -> str:
+    # @tool
+    def get_feedback_inquiry(self, response_text: str = "", user_text: str = "") -> str:
         """
-        Checks if the user's text contains specific feedback phrases and 
+        Checks if the user's text contains specific feedback phrases and
         returns an appropriate inquiry string based on the content.
-        
+
         Args:
             user_text (str): The text provided by the user.
-        
+
         Returns:
             str: The feedback inquiry string. Returns an empty string if no match is found.
         """
@@ -144,8 +147,8 @@ class VoiceAssistant:
         for phrase in feedback_phrases:
             if phrase in user_text.lower():
                 return " Did my response help?"
-        return ""
-    
+        return response_text
+
     def construct_gpt_prompt(self, text):
         """Construct the GPT-3 prompt based on the user's sentiment."""
         detected_sentiment = Sentiment(text)
@@ -161,13 +164,12 @@ class VoiceAssistant:
             gpt_prompt = self.construct_gpt_prompt(text)
             gpt_response_content = self.chatbot(gpt_prompt).content
 
-            # Check for negative sentiment before appending feedback
-            if "Requesting an empathetic response." in gpt_prompt:
-                feedback_inquiry = self.get_feedback_inquiry(text)
-                if feedback_inquiry:
-                    gpt_response_content += feedback_inquiry
+            appended_response = self.get_feedback_inquiry(gpt_response_content, text)
+            combined_response = gpt_response_content + appended_response  # Combine the original response with the feedback query
 
-            self.conversation_history.append({"role": "gpt", "content": gpt_response_content})
+            self.conversation_history.append(
+                {"role": "gpt", "content": combined_response }
+            )
             print("Conversation Log: ", self.conversation_history)
 
             return gpt_response_content
@@ -177,9 +179,9 @@ class VoiceAssistant:
 
     def _speak(self, text):
         """Convert text input to speech."""
-        
+
         bot_speech_file = VoiceAssistant._create_wav_file(prefix="bot")
-        
+
         try:
             with open(bot_speech_file, "wb") as audio_out:
                 audio_out.write(
