@@ -172,7 +172,7 @@ class VoiceAssistant:
             )
             print("Conversation Log: ", self.conversation_history)
 
-            return gpt_response_content
+            return combined_response
         except Exception as e:
             logging.error(f"Error getting GPT completion: {e}", exc_info=True)
             return "I'm sorry, I couldn't process that."
