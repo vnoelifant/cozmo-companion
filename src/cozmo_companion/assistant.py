@@ -146,35 +146,35 @@ class VoiceAssistant:
         feedback_phrases = ["joke", "motivational quote"]
         for phrase in feedback_phrases:
             if phrase in user_text.lower():
-                return " Did my response help?"
+                return " Did this help put a smile to your face?"
         return None
 
     def construct_gpt_prompt(self, text):
         """Construct the GPT-3 prompt based on the user's sentiment."""
         detected_sentiment = Sentiment(text)
         if detected_sentiment == Sentiment.NEGATIVE:
+            print("Negative Sentiment Detected...")
             return text + " Requesting an empathetic response."
         return text
 
     def _generate_response(self, text):
         """Generate a GPT response to the user's text input."""
         try:
-            self.conversation_history.append({"role": "user", "content": text})
-
             gpt_prompt = self.construct_gpt_prompt(text)
-            gpt_response_content = self.chatbot(gpt_prompt).content
-
             
-            feedback_inquiry = self.get_feedback_inquiry(text)
-            if feedback_inquiry:
-                gpt_response_content += feedback_inquiry  # Append the feedback inquiry if it exists
+            self.conversation_history.append({"role": "user", "content": gpt_prompt})
+           
+            feedback_inquiry = self.get_feedback_inquiry(gpt_prompt)
 
+            if feedback_inquiry:
+                self.chatbot(gpt_prompt).content += feedback_inquiry  # Append the feedback inquiry if it exists
+            
             self.conversation_history.append(
-                {"role": "gpt", "content": gpt_response_content}
+                {"role": "gpt", "content": self.chatbot(gpt_prompt).content}
             )
             print("Conversation Log: ", self.conversation_history)
 
-            return gpt_response_content
+            return self.chatbot(gpt_prompt).content
         except Exception as e:
             logging.error(f"Error getting GPT completion: {e}", exc_info=True)
             return "I'm sorry, I couldn't process that."
