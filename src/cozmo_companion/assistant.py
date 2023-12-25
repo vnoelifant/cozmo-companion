@@ -42,7 +42,7 @@ def is_tokens_in_gpt_response(bot_text: str, bot_tokens: list[str]) -> bool:
 def get_feedback_inquiry(user_text: str, user_tokens: list[str]) -> None | str:
     """
     Checks if the user's text contains specific feedback inquiry triggers and
-    returns an appropriate inquiry string based on the content.
+    returns an appropriate inquiry string from the bot based on the content.
 
     Args:
         user_text (str): The text provided by the user.
