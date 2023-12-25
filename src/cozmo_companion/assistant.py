@@ -29,14 +29,15 @@ logging.basicConfig(level=logging.INFO)
 def is_tokens_in_gpt_response(bot_text: str, bot_tokens: list[str]) -> bool:
     """
     Checks if any tokens exist already in bot response message
-    
+
     Args:
         bot_text (str): The text provided by the bot.
         bot_tokens: List of tokens in bot response
     Returns:
         bool: True if any tokens exist already in bot message and false otherwise
     """
-    
+
+
 @tool
 def get_feedback_inquiry(user_text: str, user_tokens: list[str]) -> None | str:
     """
@@ -161,18 +162,19 @@ class VoiceAssistant:
                 # Check if there are any results in the transcription
                 if speech_result["results"]:
                     # Extract the transcribed text from the result
-                    user_speech_text = speech_result["results"][0]["alternatives"][0]["transcript"]
+                    user_speech_text = speech_result["results"][0]["alternatives"][0][
+                        "transcript"
+                    ]
                     return user_speech_text
                 else:
                     logging.info("No speech detected. Please try again.")
                     return None
-                
+
         # Handle exceptions from the IBM service
         except ApiException as ex:
             logging.error(
                 "Method failed with status code " + str(ex.code) + ": " + ex.message
             )
-
 
     def construct_gpt_prompt(self, text):
         """Construct the GPT-3 prompt based on the user's sentiment."""
@@ -201,12 +203,16 @@ class VoiceAssistant:
 
             # Generate list of tokens in user text that will trigger a feedback inquiry question from GPT
             feedback_inquiry_user_tokens = ["joke", "motivational quote"]
-            feedback_inquiry = get_feedback_inquiry(gpt_prompt, feedback_inquiry_user_tokens)
-            
-            # If there is a request for feedback inquiry and inquiry tokens don't already exist in gpt response, append 
+            feedback_inquiry = get_feedback_inquiry(
+                gpt_prompt, feedback_inquiry_user_tokens
+            )
+
+            # If there is a request for feedback inquiry and inquiry tokens don't already exist in gpt response, append
             # specific feedback inquiry to gpt response
             feedback_inquiry_bot_tokens = ["help", "?"]
-            if feedback_inquiry and not is_tokens_in_gpt_response(gpt_response, feedback_inquiry_bot_tokens):
+            if feedback_inquiry and not is_tokens_in_gpt_response(
+                gpt_response, feedback_inquiry_bot_tokens
+            ):
                 gpt_response += feedback_inquiry
 
             # Update the conversation history with the chatbot's response
