@@ -78,8 +78,7 @@ class VoiceAssistant:
             description=(
                 "A friendly, supportive chatbot."
                 "It always provides an empathetic response when it detects"
-                "negative sentiment. For every response to the user, it"
-                "asks the user if its response helped."
+                "negative sentiment."
             ),
             tools=[get_feedback_inquiry],
         )
