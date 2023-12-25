@@ -7,6 +7,7 @@ import pyaudio
 class Recorder:
     """Recorder class to capture audio with silence detection and a maximum recording duration."""
 
+    # Constants defining the audio properties and thresholds
     FORMAT = pyaudio.paInt16
     RATE = 44100
     CHUNK_SIZE = 1024
@@ -55,6 +56,7 @@ class Recorder:
         frames = []
 
         try:
+            # Open a stream for audio recording
             stream = p.open(
                 format=self.FORMAT,
                 channels=self.CHANNELS,
@@ -63,13 +65,16 @@ class Recorder:
                 output=True,
                 frames_per_buffer=self.CHUNK_SIZE,
             )
+            # Record audio in chunks
             self._record_audio_chunks(stream, frames)
             print("Recording Complete")
+            # Save the recorded audio to a file
             self._save_audio_to_file(p.get_sample_size(self.FORMAT), frames)
 
         except Exception as e:
             print(f"Error while recording: {e}")
         finally:
+            # Ensure stream is properly closed after recording
             stream.stop_stream()
             stream.close()
             p.terminate()
@@ -87,12 +92,14 @@ class Recorder:
                 break
             data = stream.read(self.CHUNK_SIZE)
             data_chunk = array("h", data)
+            # Check if the audio chunk is loud enough
             if self._is_audio_loud(data_chunk):
                 print("Something Said")
                 frames.append(data)
                 silent_chunks = 0
             else:
                 print("Nothing Said")
+                # If silent, keep track of consecutive silent chunks
                 silent_chunks += 1
                 if self._is_prolonged_silence(silent_chunks):
                     print("Prolonged silence detected. Stopping recording.")
