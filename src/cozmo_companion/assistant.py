@@ -168,8 +168,8 @@ class VoiceAssistant:
         if detected_sentiment == Sentiment.POSITIVE:
             logging.info("Positive Sentiment Detected...")
             return text
-        # Else return text appended with request for an empathetic response
         else:
+            # Return text appended with request for an empathetic response
             logging.info("Negative Sentiment Detected...")
             return text + " Requesting an empathetic response."
 
