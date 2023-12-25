@@ -96,7 +96,7 @@ class VoiceAssistant:
             config("IAM_APIKEY_TTS"), config("URL_TTS")
         )
         # Setting up Marvin settings
-        marvin.settings.openai.api_key = config("OPENAI_API_KEY")
+        marvin.settings.openai.api_key = config("MARVIN_OPENAI_API_KEY")
         marvin.settings.llm_model = config("MARVIN_LLM_MODEL")
 
     def _initialize_ibm_service(self, api_key, url):
@@ -204,10 +204,10 @@ class VoiceAssistant:
             feedback_inquiry_user_tokens = ["joke", "motivational quote"]
             feedback_inquiry = get_feedback_inquiry(gpt_prompt, feedback_inquiry_user_tokens)
             
-            # If feedback inquiry tokens don't already exist in gpt response, append 
+            # If there is a request for feedback inquiry and inquiry tokens don't already exist in gpt response, append 
             # specific feedback inquiry to gpt response
             feedback_inquiry_bot_tokens = ["help", "?"]
-            if not is_tokens_in_gpt_response(gpt_response, feedback_inquiry_bot_tokens):
+            if feedback_inquiry and not is_tokens_in_gpt_response(gpt_response, feedback_inquiry_bot_tokens):
                 gpt_response += feedback_inquiry
 
             # Update the conversation history with the chatbot's response
