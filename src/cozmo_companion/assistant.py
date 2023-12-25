@@ -23,6 +23,26 @@ from .constants import (
 )
 from .recorder import Recorder
 
+logging.basicConfig(level=logging.INFO)
+
+@tool
+def get_feedback_inquiry(user_text: str = "") -> Optional[str]:
+    """
+    Checks if the user's text contains specific feedback phrases and
+    returns an appropriate inquiry string based on the content.
+
+    Args:
+        user_text (str): The text provided by the user.
+
+    Returns:
+        Optional[str]: The feedback inquiry string or None if no match is found.
+    """
+    feedback_phrases = ["joke", "motivational quote"]
+    for phrase in feedback_phrases:
+        if phrase in user_text.lower():
+            return " Did this help put a smile to your face?"
+    return None
+
 
 # Enum class for sentiment analysis
 @ai_classifier
@@ -49,7 +69,7 @@ class VoiceAssistant:
                 "negative sentiment. For every response to the user, it"
                 "asks the user if its response helped."
             ),
-            tools=[self.get_feedback_inquiry],
+            tools=[get_feedback_inquiry],
         )
         # Initializing conversation history to store user and bot interactions
         self.conversation_history = []
@@ -108,15 +128,15 @@ class VoiceAssistant:
         # Create a WAV file to store the user's speech
         user_speech_file = VoiceAssistant._create_wav_file(prefix="user")
 
-        print("Starting recording process")
+        logging.info("Starting recording process")
         # Initialize the recorder
         recorder = Recorder(user_speech_file)
 
-        print("Please say something to the microphone\n")
+        logging.info("Please say something to the microphone\n")
         # Start recording
         recorder.record()
 
-        print("Transcribing audio....\n")
+        logging.info("Transcribing audio....\n")
         # Transcribe the recorded audio using IBM's Speech-to-Text service
         try:
             with open((user_speech_file), "rb") as audio:
@@ -139,36 +159,19 @@ class VoiceAssistant:
                 "Method failed with status code " + str(ex.code) + ": " + ex.message
             )
 
-    # @tool
-    def get_feedback_inquiry(self, user_text: str = "") -> Optional[str]:
-        """
-        Checks if the user's text contains specific feedback phrases and
-        returns an appropriate inquiry string based on the content.
-
-        Args:
-            user_text (str): The text provided by the user.
-
-        Returns:
-            Optional[str]: The feedback inquiry string or None if no match is found.
-        """
-        # List of feedback phrases to check against
-        feedback_phrases = ["joke", "motivational quote"]
-        for phrase in feedback_phrases:
-            # If the user's text contains any of the feedback phrases, return the inquiry string
-            if phrase in user_text.lower():
-                return " Did this help put a smile to your face?"
-        # If no match is found, return None
-        return None
 
     def construct_gpt_prompt(self, text):
         """Construct the GPT-3 prompt based on the user's sentiment."""
         # Detect the sentiment of the user's text
         detected_sentiment = Sentiment(text)
-        # If the sentiment is negative, append a request for an empathetic response
-        if detected_sentiment == Sentiment.NEGATIVE:
-            print("Negative Sentiment Detected...")
+        # If the sentiment is positive, return the user's text
+        if detected_sentiment == Sentiment.POSITIVE:
+            logging.info("Positive Sentiment Detected...")
+            return text
+        # Else return text appended with request for an empathetic response
+        else:
+            logging.info("Negative Sentiment Detected...")
             return text + " Requesting an empathetic response."
-        return text
 
     def _generate_response(self, text):
         """Generate a GPT response to the user's text input."""
@@ -183,15 +186,15 @@ class VoiceAssistant:
             gpt_response = self.chatbot(gpt_prompt).content
 
             # If there's a feedback inquiry, append it to the chatbot's response
-            feedback_inquiry = self.get_feedback_inquiry(gpt_prompt)
+            feedback_inquiry = get_feedback_inquiry(gpt_prompt)
             if feedback_inquiry and feedback_inquiry not in gpt_response:
                 gpt_response += feedback_inquiry
 
             # Update the conversation history with the chatbot's response
             self.conversation_history.append({"role": "gpt", "content": gpt_response})
 
-            # Print the conversation log (this can be removed if not needed in production)
-            print("Conversation Log: ", self.conversation_history)
+            # logging.info the conversation log (this can be removed if not needed in production)
+            logging.info("Conversation Log: ", self.conversation_history)
 
             return gpt_response
         except Exception as e:
@@ -230,13 +233,13 @@ class VoiceAssistant:
         while True:
             # Listen to the user's speech and transcribe it
             user_speech_text = self._listen()
-            print(f"User Speech Text: {user_speech_text} \n")
+            logging.info(f"User Speech Text: {user_speech_text} \n")
             # Exit the loop if the user says "exit"
             if "exit" in user_speech_text.strip().lower():
                 self._speak("Goodbye!")
                 break
             # Generate a GPT response for the user's input
             gpt_response_msg = self._generate_response(user_speech_text)
-            print(f"GPT Response Message: {gpt_response_msg} \n")
+            logging.info(f"GPT Response Message: {gpt_response_msg} \n")
             # Speak the GPT response
             self._speak(gpt_response_msg)
