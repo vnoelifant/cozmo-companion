@@ -219,7 +219,7 @@ class VoiceAssistant:
             self.conversation_history.append({"role": "gpt", "content": gpt_response})
 
             # logging.info the conversation log (this can be removed if not needed in production)
-            logging.info("Conversation Log: ", self.conversation_history)
+            logging.info(f"Conversation Log: {self.conversation_history}")
 
             return gpt_response
         except Exception as e:
