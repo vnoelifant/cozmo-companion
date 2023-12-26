@@ -1,28 +1,34 @@
-import os
 import logging
-import marvin
+import os
 from datetime import datetime
+from enum import Enum
+
+import marvin
 from decouple import config
 from ibm_cloud_sdk_core.authenticators import IAMAuthenticator
-from ibm_watson import SpeechToTextV1, TextToSpeechV1, ApiException
+from ibm_watson import ApiException, SpeechToTextV1, TextToSpeechV1
 from marvin import AIApplication, ai_classifier, ai_fn
 from marvin.tools import tool
 from pydub import AudioSegment
 from pydub.playback import play
-from enum import Enum
-from typing import Optional
 
-from .constants import (
-    AUDIO_FORMAT,
-    CONTENT_TYPE,
-    KEYWORDS,
-    KEYWORDS_THRESHOLD,
-    VOICE,
-    WORD_ALTERNATIVE_THRESHOLDS,
-)
 from .recorder import Recorder
 
 logging.basicConfig(level=logging.INFO)
+
+# Watson Speech to Text Configuration
+CONTENT_TYPE = config("CONTENT_TYPE", default="audio/wav")
+WORD_ALTERNATIVE_THRESHOLDS = config(
+    "WORD_ALTERNATIVE_THRESHOLDS", default=0.9, cast=float
+)
+KEYWORDS = config("KEYWORDS", default="hey,hi,watson,friend,meet").split(",")
+KEYWORDS_THRESHOLD = config("KEYWORDS_THRESHOLD", default=0.5, cast=float)
+MAX_TOKENS = config("MAX_TOKENS", default=1000, cast=int)
+TEMPERATURE = config("TEMPERATURE", default=1.2, cast=float)
+
+# Watson Text to Speech Configuration
+AUDIO_FORMAT = config("AUDIO_FORMAT", default="audio/wav")
+VOICE = config("VOICE", default="en-US_AllisonV3Voice")
 
 
 @ai_fn
@@ -31,11 +37,12 @@ def is_tokens_in_gpt_response(bot_text: str, bot_tokens: list[str]) -> bool:
     Checks if any tokens exist already in bot response message
 
     Args:
-        bot_text (str): The text provided by the bot.
-        bot_tokens: List of tokens in bot response
+        bot_text: The text provided by the bot.
+        bot_tokens: Tokens to check in the bot's response.
     Returns:
-        bool: True if any tokens exist already in bot message and false otherwise
+        bool: True if any tokens exist in bot message and false otherwise
     """
+    return any(token in bot_text for token in bot_tokens)
 
 
 @tool
@@ -45,8 +52,8 @@ def get_feedback_inquiry(user_text: str, user_tokens: list[str]) -> None | str:
     returns an appropriate inquiry string from the bot based on the content.
 
     Args:
-        user_text (str): The text provided by the user.
-        user_tokens: List of tokens that will trigger a feedback inquiry from bot
+        user_text: The text provided by the user.
+        user_tokens: Tokens to check in user text
 
     Returns:
         None | str: The feedback inquiry string or None if no match is found.
@@ -67,7 +74,8 @@ class Sentiment(Enum):
 class VoiceAssistant:
 
     """
-    A class to represent a voice assistant capable of listening to voice input, generating a GPT response,
+    A class to represent a voice assistant capable of
+    listening to voice input, generating a GPT response,
     and speaking the GPT response.
     """
 
@@ -116,7 +124,8 @@ class VoiceAssistant:
             service = TextToSpeechV1(authenticator=authenticator)
         else:
             raise ValueError(
-                f"Invalid service URL: {url}. Expected 'speech-to-text' or 'text-to-speech' in the URL."
+                f"Invalid service URL: {url}. Expected 'speech-to-text' "
+                f"or 'text-to-speech' in the URL."
             )
         service.set_service_url(url)
         return service
@@ -162,9 +171,9 @@ class VoiceAssistant:
                 # Check if there are any results in the transcription
                 if speech_result["results"]:
                     # Extract the transcribed text from the result
-                    user_speech_text = speech_result["results"][0]["alternatives"][0][
-                        "transcript"
-                    ]
+                    result_alternative = speech_result["results"][0]["alternatives"][0]
+                    user_speech_text = result_alternative["transcript"]
+
                     return user_speech_text
                 else:
                     logging.info("No speech detected. Please try again.")
@@ -172,9 +181,7 @@ class VoiceAssistant:
 
         # Handle exceptions from the IBM service
         except ApiException as ex:
-            logging.error(
-                "Method failed with status code " + str(ex.code) + ": " + ex.message
-            )
+            logging.error(f"Method failed with status code {ex.code}: " f"{ex.message}")
 
     def construct_gpt_prompt(self, text):
         """Construct the GPT-3 prompt based on the user's sentiment."""
@@ -201,14 +208,13 @@ class VoiceAssistant:
             # Get the chatbot's response content
             gpt_response = self.chatbot(gpt_prompt).content
 
-            # Generate list of tokens in user text that will trigger a feedback inquiry question from GPT
+            # Generate list of tokens to trigger a feedback inquiry question from GPT
             feedback_inquiry_user_tokens = ["joke", "motivational quote"]
             feedback_inquiry = get_feedback_inquiry(
                 gpt_prompt, feedback_inquiry_user_tokens
             )
 
-            # If there is a request for feedback inquiry and inquiry tokens don't already exist in gpt response, append
-            # specific feedback inquiry to gpt response
+            # Append specific feedback inquiry to gpt response
             feedback_inquiry_bot_tokens = ["help", "?"]
             if feedback_inquiry and not is_tokens_in_gpt_response(
                 gpt_response, feedback_inquiry_bot_tokens
@@ -218,7 +224,7 @@ class VoiceAssistant:
             # Update the conversation history with the chatbot's response
             self.conversation_history.append({"role": "gpt", "content": gpt_response})
 
-            # logging.info the conversation log (this can be removed if not needed in production)
+            # logging.info the conversation log
             logging.info(f"Conversation Log: {self.conversation_history}")
 
             return gpt_response
