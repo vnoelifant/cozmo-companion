@@ -39,12 +39,3 @@ cozmo = "cozmo_companion.cli:app"
 
 [tool.mypy]
 ignore_missing_imports = true
-
-[tool.mypy.overrides]
-"pyaudio" = { ignore_missing_imports = true }
-"marvin.*" = { ignore_missing_imports = true }
-"decouple.*" = { ignore_missing_imports = true }
-"ibm_cloud_sdk_core.authenticators.*" = { ignore_missing_imports = true }
-"ibm_watson.*" = { ignore_missing_imports = true }
-"pydub.*" = { ignore_missing_imports = true }
-"pydub.playback.*" = { ignore_missing_imports = true }
