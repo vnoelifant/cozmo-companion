@@ -30,38 +30,55 @@ TEMPERATURE = config("TEMPERATURE", default=1.2, cast=float)
 AUDIO_FORMAT = config("AUDIO_FORMAT", default="audio/wav")
 VOICE = config("VOICE", default="en-US_AllisonV3Voice")
 
+# Dialogue Constants
+FEEDBACK_INQUIRY = " Did this help put a smile to your face?"
+
 
 @ai_fn
 def is_tokens_in_gpt_response(bot_text: str, bot_tokens: list[str]) -> bool:
     """
-    Checks if any tokens exist already in bot response message
+    Determine whether any of the specified tokens are present in the bot's response.
+
+    Imagine you are analyzing a conversation between a user and an AI chatbot.
+    Your task is to identify if specific keywords or phrases (referred to as 'tokens')
+    appear in the chatbot's response. These tokens are crucial for understanding the
+    relevance or context of the bot's message in relation to the conversation.
 
     Args:
-        bot_text: The text provided by the bot.
-        bot_tokens: Tokens to check in the bot's response.
+        bot_text: The text of the response provided by the chatbot.
+        This text is the output from the chatbot in a conversation and
+        may contain various words, phrases, and sentences.
+        bot_tokens: A list of specific tokens (keywords or phrases)
+        that are of interest in the analysis. These tokens are pre-identified
+        and are used to gauge the relevance or context of the bot's response.
+
     Returns:
-        bool: True if any tokens exist in bot message and false otherwise
+        bool: A boolean value indicating the presence of any of the specified
+        tokens in the bot's response.
+              - True: If at least one of the tokens is found in the bot's response.
+              This indicates that the response is potentially relevant or contextually
+              significant based on the tokens.
+              - False: If none of the tokens are found in the bot's response,
+              suggesting that the response may not be relevant or lack context
+              with respect to the specified tokens.
+
+    The function uses natural language processing techniques to scan the bot's response
+    and identifies the presence or absence of the specified tokens.
+    It considers various forms of the tokens (like plural forms, different tenses,
+    synonyms)to ensure accurate detection.
     """
-    return any(token in bot_text for token in bot_tokens)
+    return False  # Dummy return value for type checking
 
 
 @tool
-def get_feedback_inquiry(user_text: str, user_tokens: list[str]) -> None | str:
+def get_feedback_inquiry() -> str:
     """
-    Checks if the user's text contains specific feedback inquiry triggers and
-    returns an appropriate inquiry string from the bot based on the content.
-
-    Args:
-        user_text: The text provided by the user.
-        user_tokens: Tokens to check in user text
+    Returns an appropriate feedback inquiry string from the bot.
 
     Returns:
-        None | str: The feedback inquiry string or None if no match is found.
+        str: The feedback inquiry string.
     """
-    for user_token in user_tokens:
-        if user_token in user_text.lower():
-            return " Did this help put a smile to your face?"
-    return None
+    return FEEDBACK_INQUIRY
 
 
 # Enum class for sentiment analysis
@@ -196,41 +213,44 @@ class VoiceAssistant:
             logging.info("Negative Sentiment Detected...")
             return text + " Requesting an empathetic response."
 
-    def _generate_response(self, text):
-        """Generate a GPT response to the user's text input."""
-        try:
-            # Construct the GPT prompt based on the input text
-            gpt_prompt = self.construct_gpt_prompt(text)
 
-            # Update the conversation history with the user's input
-            self.conversation_history.append({"role": "user", "content": gpt_prompt})
+def _generate_response(self, text):
+    """Generate a GPT response to the user's text input."""
+    try:
+        # Construct the GPT prompt based on the input text
+        gpt_prompt = self.construct_gpt_prompt(text)
 
-            # Get the chatbot's response content
-            gpt_response = self.chatbot(gpt_prompt).content
+        # Update the conversation history with the user's input
+        self.conversation_history.append({"role": "user", "content": gpt_prompt})
 
-            # Generate list of tokens to trigger a feedback inquiry question from GPT
-            feedback_inquiry_user_tokens = ["joke", "motivational quote"]
-            feedback_inquiry = get_feedback_inquiry(
-                gpt_prompt, feedback_inquiry_user_tokens
-            )
+        # Get the chatbot's response content
+        gpt_response = self.chatbot(gpt_prompt).content
 
-            # Append specific feedback inquiry to gpt response
+        # Generate list of tokens to trigger a feedback inquiry question from GPT
+        feedback_inquiry_user_tokens = ["joke", "motivational quote"]
+
+        # Check if gpt_prompt contains any of the feedback inquiry user tokens
+        if any(token in gpt_prompt.lower() for token in feedback_inquiry_user_tokens):
+            feedback_inquiry = get_feedback_inquiry(gpt_prompt)
+
+            # Append specific feedback inquiry to gpt response if
+            # response does not contain related feedback inquiry tokens
             feedback_inquiry_bot_tokens = ["help", "?"]
             if feedback_inquiry and not is_tokens_in_gpt_response(
                 gpt_response, feedback_inquiry_bot_tokens
             ):
                 gpt_response += feedback_inquiry
 
-            # Update the conversation history with the chatbot's response
-            self.conversation_history.append({"role": "gpt", "content": gpt_response})
+        # Update the conversation history with the chatbot's response
+        self.conversation_history.append({"role": "gpt", "content": gpt_response})
 
-            # logging.info the conversation log
-            logging.info(f"Conversation Log: {self.conversation_history}")
+        # logging.info the conversation log
+        logging.info(f"Conversation Log: {self.conversation_history}")
 
-            return gpt_response
-        except Exception as e:
-            logging.error(f"Error getting GPT completion: {e}", exc_info=True)
-            return "I'm sorry, I couldn't process that."
+        return gpt_response
+    except Exception as e:
+        logging.error(f"Error getting GPT completion: {e}", exc_info=True)
+        return "I'm sorry, I couldn't process that."
 
     def _speak(self, text):
         """Convert text input to speech."""
