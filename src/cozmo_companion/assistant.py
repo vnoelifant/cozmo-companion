@@ -35,41 +35,37 @@ FEEDBACK_INQUIRY = " Did this help put a smile to your face?"
 
 
 @ai_fn
-def is_tokens_in_gpt_response(bot_text: str, bot_tokens: list[str]) -> bool:
+def is_feedback_inquiry_present(bot_text: str) -> bool:
     """
-    Determine whether any of the specified tokens are present in the bot's response.
+    Analyzes the bot's response to determine if it contains a feedback inquiry.
 
-    Imagine you are analyzing a conversation between a user and an AI chatbot.
-    Your task is to identify if specific keywords or phrases (referred to as 'tokens')
-    appear in the chatbot's response. These tokens are crucial for understanding the
-    relevance or context of the bot's message in relation to the conversation.
+    The function examines the text of a chatbot's response to detect if it includes
+    phrases or questions that are seeking feedback from the user. Common examples of
+    feedback inquiries might include direct questions like "Did that help you?" or
+    "Do you want to know more?" as well as subtle cues such as the presence of a
+    question mark (?) at the end of a statement.
 
     Args:
-        bot_text: The text of the response provided by the chatbot.
-        This text is the output from the chatbot in a conversation and
-        may contain various words, phrases, and sentences.
-        bot_tokens: A list of specific tokens (keywords or phrases)
-        that are of interest in the analysis. These tokens are pre-identified
-        and are used to gauge the relevance or context of the bot's response.
+        bot_text: The text of the response provided by the chatbot. This can range
+        from answers and statements to jokes or informational content.
 
     Returns:
-        bool: A boolean value indicating the presence of any of the specified
-        tokens in the bot's response.
-              - True: If at least one of the tokens is found in the bot's response.
-              This indicates that the response is potentially relevant or contextually
-              significant based on the tokens.
-              - False: If none of the tokens are found in the bot's response,
-              suggesting that the response may not be relevant or lack context
-              with respect to the specified tokens.
+        bool: Indicates whether the bot's response includes a feedback inquiry.
+              - True: If phrases or questions seeking feedback are found, indicating
+                an active attempt by the bot to engage with the user or confirm
+                understanding.
+              - False: If no feedback-seeking phrases or questions are detected,
+                suggesting a straightforward response without solicitation for feedback.
 
-    The function uses natural language processing techniques to scan the bot's response
-    and identifies the presence or absence of the specified tokens.
-    It considers various forms of the tokens (like plural forms, different tenses,
-    synonyms)to ensure accurate detection.
+    The function leverages natural language understanding to interpret the text and
+    identify feedback-related phrases, taking into account the context and subtleties
+    of the conversation.
     """
     return False  # Dummy return value for type checking
 
 
+# TODO: Adjust the tool to accept a parameter that indicates the type of request.
+# and return a feedback inquiry that is appropriate for that request type.
 @tool
 def get_feedback_inquiry() -> str:
     """
@@ -213,44 +209,45 @@ class VoiceAssistant:
             logging.info("Negative Sentiment Detected...")
             return text + " Requesting an empathetic response."
 
+    def _generate_response(self, text):
+        """Generate a GPT response to the user's text input."""
+        try:
+            # Construct the GPT prompt based on the input text
+            gpt_prompt = self.construct_gpt_prompt(text)
 
-def _generate_response(self, text):
-    """Generate a GPT response to the user's text input."""
-    try:
-        # Construct the GPT prompt based on the input text
-        gpt_prompt = self.construct_gpt_prompt(text)
+            # Update the conversation history with the user's input
+            self.conversation_history.append({"role": "user", "content": gpt_prompt})
 
-        # Update the conversation history with the user's input
-        self.conversation_history.append({"role": "user", "content": gpt_prompt})
+            # Get the chatbot's response content
+            gpt_response = self.chatbot(gpt_prompt).content
 
-        # Get the chatbot's response content
-        gpt_response = self.chatbot(gpt_prompt).content
+            # TODO:  implement logic to determine the request type based
+            # on the user's input, and then use this information to get
+            # the appropriate feedback inquiry
+            # Generate list of tokens to trigger a feedback inquiry question from GPT
+            feedback_inquiry_user_tokens = ["joke", "motivational quote"]
 
-        # Generate list of tokens to trigger a feedback inquiry question from GPT
-        feedback_inquiry_user_tokens = ["joke", "motivational quote"]
-
-        # Check if gpt_prompt contains any of the feedback inquiry user tokens
-        if any(token in gpt_prompt.lower() for token in feedback_inquiry_user_tokens):
-            feedback_inquiry = get_feedback_inquiry(gpt_prompt)
-
-            # Append specific feedback inquiry to gpt response if
-            # response does not contain related feedback inquiry tokens
-            feedback_inquiry_bot_tokens = ["help", "?"]
-            if feedback_inquiry and not is_tokens_in_gpt_response(
-                gpt_response, feedback_inquiry_bot_tokens
+            # Check if gpt_prompt contains any of the feedback inquiry user tokens
+            if any(
+                token in gpt_prompt.lower() for token in feedback_inquiry_user_tokens
             ):
-                gpt_response += feedback_inquiry
+                feedback_inquiry = get_feedback_inquiry()
 
-        # Update the conversation history with the chatbot's response
-        self.conversation_history.append({"role": "gpt", "content": gpt_response})
+                # Append specific feedback inquiry to gpt response if
+                # response doesn't contain feedback inquiry text already
+                if not is_feedback_inquiry_present(gpt_response):
+                    gpt_response += feedback_inquiry
 
-        # logging.info the conversation log
-        logging.info(f"Conversation Log: {self.conversation_history}")
+            # Update the conversation history with the chatbot's response
+            self.conversation_history.append({"role": "gpt", "content": gpt_response})
 
-        return gpt_response
-    except Exception as e:
-        logging.error(f"Error getting GPT completion: {e}", exc_info=True)
-        return "I'm sorry, I couldn't process that."
+            # logging.info the conversation log
+            logging.info(f"Conversation Log: {self.conversation_history}")
+
+            return gpt_response
+        except Exception as e:
+            logging.error(f"Error getting GPT completion: {e}", exc_info=True)
+            return "I'm sorry, I couldn't process that."
 
     def _speak(self, text):
         """Convert text input to speech."""
