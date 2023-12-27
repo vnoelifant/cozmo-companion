@@ -39,11 +39,13 @@ def is_feedback_inquiry_present(bot_text: str) -> bool:
     """
     Analyzes the bot's response to determine if it contains a feedback inquiry.
 
-    The function examines the text of a chatbot's response to detect if it includes
-    phrases or questions that are seeking feedback from the user. Common examples of
-    feedback inquiries might include direct questions like "Did that help you?" or
-    "Do you want to know more?" as well as subtle cues such as the presence of a
-    question mark (?) at the end of a statement.
+    The function leverages natural language understanding to interpret the text and
+    identify feedback-related phrases, taking into account the context and subtleties
+    of the conversation. It examines the text of a chatbot's response to detect if
+    it includes phrases or questions that are seeking feedback from the user. Common
+    examples of feedback inquiries might include direct questions like "Did that help
+    you?" or "Do you want to know more?" as well as subtle cues such as the presence
+    of a question mark (?) at the end of a statement.
 
     Args:
         bot_text: The text of the response provided by the chatbot. This can range
@@ -51,15 +53,11 @@ def is_feedback_inquiry_present(bot_text: str) -> bool:
 
     Returns:
         bool: Indicates whether the bot's response includes a feedback inquiry.
-              - True: If phrases or questions seeking feedback are found, indicating
+            - True: If phrases or questions seeking feedback are found, indicating
                 an active attempt by the bot to engage with the user or confirm
                 understanding.
-              - False: If no feedback-seeking phrases or questions are detected,
+            - False: If no feedback-seeking phrases or questions are detected,
                 suggesting a straightforward response without solicitation for feedback.
-
-    The function leverages natural language understanding to interpret the text and
-    identify feedback-related phrases, taking into account the context and subtleties
-    of the conversation.
     """
     return False  # Dummy return value for type checking
 
