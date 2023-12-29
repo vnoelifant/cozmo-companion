@@ -25,6 +25,9 @@ dependencies = [
   "PyAudio",
   "openai",
   "anki_vector",
+  "isort",
+  "mypy",
+  "flake8",
 ]
 
 [project.urls]
@@ -33,3 +36,6 @@ dependencies = [
 
 [project.scripts]
 cozmo = "cozmo_companion.cli:app"
+
+[tool.mypy]
+ignore_missing_imports = true

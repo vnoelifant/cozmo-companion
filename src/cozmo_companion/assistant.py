@@ -1,47 +1,78 @@
-import os
 import logging
+import os
+from datetime import datetime
+from enum import Enum
 
 import marvin
-from datetime import datetime
 from decouple import config
 from ibm_cloud_sdk_core.authenticators import IAMAuthenticator
-from ibm_watson import SpeechToTextV1, TextToSpeechV1, ApiException
-from marvin import AIApplication, ai_classifier
+from ibm_watson import ApiException, SpeechToTextV1, TextToSpeechV1
+from marvin import AIApplication, ai_classifier, ai_fn
 from marvin.tools import tool
 from pydub import AudioSegment
 from pydub.playback import play
-from enum import Enum
-from typing import Optional
 
-from .constants import (
-    AUDIO_FORMAT,
-    CONTENT_TYPE,
-    KEYWORDS,
-    KEYWORDS_THRESHOLD,
-    VOICE,
-    WORD_ALTERNATIVE_THRESHOLDS,
-)
 from .recorder import Recorder
 
 logging.basicConfig(level=logging.INFO)
 
-@tool
-def get_feedback_inquiry(user_text: str = "") -> Optional[str]:
+# Watson Speech to Text Configuration
+CONTENT_TYPE = config("CONTENT_TYPE", default="audio/wav")
+WORD_ALTERNATIVE_THRESHOLDS = config(
+    "WORD_ALTERNATIVE_THRESHOLDS", default=0.9, cast=float
+)
+KEYWORDS = config("KEYWORDS", default="hey,hi,watson,friend,meet").split(",")
+KEYWORDS_THRESHOLD = config("KEYWORDS_THRESHOLD", default=0.5, cast=float)
+MAX_TOKENS = config("MAX_TOKENS", default=1000, cast=int)
+TEMPERATURE = config("TEMPERATURE", default=1.2, cast=float)
+
+# Watson Text to Speech Configuration
+AUDIO_FORMAT = config("AUDIO_FORMAT", default="audio/wav")
+VOICE = config("VOICE", default="en-US_AllisonV3Voice")
+
+# Dialogue Constants
+FEEDBACK_INQUIRY = " Did this help put a smile to your face?"
+
+
+@ai_fn
+def is_feedback_inquiry_present(bot_text: str) -> bool:
     """
-    Checks if the user's text contains specific feedback phrases and
-    returns an appropriate inquiry string based on the content.
+    Analyzes the bot's response to determine if it contains a feedback inquiry.
+
+    The function leverages natural language understanding to interpret the text and
+    identify feedback-related phrases, taking into account the context and subtleties
+    of the conversation. It examines the text of a chatbot's response to detect if
+    it includes phrases or questions that are seeking feedback from the user. Common
+    examples of feedback inquiries might include direct questions like "Did that help
+    you?" or "Do you want to know more?" as well as subtle cues such as the presence
+    of a question mark (?) at the end of a statement.
 
     Args:
-        user_text (str): The text provided by the user.
+        bot_text: The text of the response provided by the chatbot. This can range
+        from answers and statements to jokes or informational content.
 
     Returns:
-        Optional[str]: The feedback inquiry string or None if no match is found.
+        bool: Indicates whether the bot's response includes a feedback inquiry.
+            - True: If phrases or questions seeking feedback are found, indicating
+                an active attempt by the bot to engage with the user or confirm
+                understanding.
+            - False: If no feedback-seeking phrases or questions are detected,
+                suggesting a straightforward response without solicitation for feedback.
     """
-    feedback_phrases = ["joke", "motivational quote"]
-    for phrase in feedback_phrases:
-        if phrase in user_text.lower():
-            return " Did this help put a smile to your face?"
-    return None
+    return False  # Dummy return value for type checking
+
+
+# TODO: Adjust the tool to accept a parameter that indicates the type of request.
+# and return a feedback inquiry that is appropriate for that request type.
+@tool
+def get_feedback_inquiry() -> str:
+    """
+    Returns an appropriate feedback inquiry string from the bot.
+
+    Returns:
+        str: The feedback inquiry string.
+    """
+    return FEEDBACK_INQUIRY
 
 
 # Enum class for sentiment analysis
@@ -54,7 +85,8 @@ class Sentiment(Enum):
 class VoiceAssistant:
 
     """
-    A class to represent a voice assistant capable of listening to voice input, generating a GPT response,
+    A class to represent a voice assistant capable of
+    listening to voice input, generating a GPT response,
     and speaking the GPT response.
     """
 
@@ -66,8 +98,7 @@ class VoiceAssistant:
             description=(
                 "A friendly, supportive chatbot."
                 "It always provides an empathetic response when it detects"
-                "negative sentiment. For every response to the user, it"
-                "asks the user if its response helped."
+                "negative sentiment."
             ),
             tools=[get_feedback_inquiry],
         )
@@ -84,7 +115,7 @@ class VoiceAssistant:
             config("IAM_APIKEY_TTS"), config("URL_TTS")
         )
         # Setting up Marvin settings
-        marvin.settings.openai.api_key = config("OPENAI_API_KEY")
+        marvin.settings.openai.api_key = config("MARVIN_OPENAI_API_KEY")
         marvin.settings.llm_model = config("MARVIN_LLM_MODEL")
 
     def _initialize_ibm_service(self, api_key, url):
@@ -104,7 +135,8 @@ class VoiceAssistant:
             service = TextToSpeechV1(authenticator=authenticator)
         else:
             raise ValueError(
-                f"Invalid service URL: {url}. Expected 'speech-to-text' or 'text-to-speech' in the URL."
+                f"Invalid service URL: {url}. Expected 'speech-to-text' "
+                f"or 'text-to-speech' in the URL."
             )
         service.set_service_url(url)
         return service
@@ -147,18 +179,20 @@ class VoiceAssistant:
                     keywords=KEYWORDS,
                     keywords_threshold=KEYWORDS_THRESHOLD,
                 ).get_result()
-                # Extract the transcribed text from the result
-                user_speech_text = speech_result["results"][0]["alternatives"][0][
-                    "transcript"
-                ]
+                # Check if there are any results in the transcription
+                if speech_result["results"]:
+                    # Extract the transcribed text from the result
+                    result_alternative = speech_result["results"][0]["alternatives"][0]
+                    user_speech_text = result_alternative["transcript"]
 
-            return user_speech_text
+                    return user_speech_text
+                else:
+                    logging.info("No speech detected. Please try again.")
+                    return None
+
         # Handle exceptions from the IBM service
         except ApiException as ex:
-            logging.error(
-                "Method failed with status code " + str(ex.code) + ": " + ex.message
-            )
-
+            logging.error(f"Method failed with status code {ex.code}: " f"{ex.message}")
 
     def construct_gpt_prompt(self, text):
         """Construct the GPT-3 prompt based on the user's sentiment."""
@@ -168,8 +202,8 @@ class VoiceAssistant:
         if detected_sentiment == Sentiment.POSITIVE:
             logging.info("Positive Sentiment Detected...")
             return text
-        # Else return text appended with request for an empathetic response
         else:
+            # Return text appended with request for an empathetic response
             logging.info("Negative Sentiment Detected...")
             return text + " Requesting an empathetic response."
 
@@ -185,16 +219,28 @@ class VoiceAssistant:
             # Get the chatbot's response content
             gpt_response = self.chatbot(gpt_prompt).content
 
-            # If there's a feedback inquiry, append it to the chatbot's response
-            feedback_inquiry = get_feedback_inquiry(gpt_prompt)
-            if feedback_inquiry and feedback_inquiry not in gpt_response:
-                gpt_response += feedback_inquiry
+            # TODO:  implement logic to determine the request type based
+            # on the user's input, and then use this information to get
+            # the appropriate feedback inquiry
+            # Generate list of tokens to trigger a feedback inquiry question from GPT
+            feedback_inquiry_user_tokens = ["joke", "motivational quote"]
+
+            # Check if gpt_prompt contains any of the feedback inquiry user tokens
+            if any(
+                token in gpt_prompt.lower() for token in feedback_inquiry_user_tokens
+            ):
+                feedback_inquiry = get_feedback_inquiry()
+
+                # Append specific feedback inquiry to gpt response if
+                # response doesn't contain feedback inquiry text already
+                if not is_feedback_inquiry_present(gpt_response):
+                    gpt_response += feedback_inquiry
 
             # Update the conversation history with the chatbot's response
             self.conversation_history.append({"role": "gpt", "content": gpt_response})
 
-            # logging.info the conversation log (this can be removed if not needed in production)
-            logging.info("Conversation Log: ", self.conversation_history)
+            # logging.info the conversation log
+            logging.info(f"Conversation Log: {self.conversation_history}")
 
             return gpt_response
         except Exception as e:
@@ -234,12 +280,19 @@ class VoiceAssistant:
             # Listen to the user's speech and transcribe it
             user_speech_text = self._listen()
             logging.info(f"User Speech Text: {user_speech_text} \n")
-            # Exit the loop if the user says "exit"
-            if "exit" in user_speech_text.strip().lower():
-                self._speak("Goodbye!")
-                break
-            # Generate a GPT response for the user's input
-            gpt_response_msg = self._generate_response(user_speech_text)
-            logging.info(f"GPT Response Message: {gpt_response_msg} \n")
-            # Speak the GPT response
-            self._speak(gpt_response_msg)
+
+            # Check if user_speech_text is not None
+            if user_speech_text:
+                # Exit the loop if the user says "exit"
+                if "exit" in user_speech_text.strip().lower():
+                    self._speak("Goodbye!")
+                    break
+                # Generate a GPT response for the user's input
+                gpt_response_msg = self._generate_response(user_speech_text)
+                logging.info(f"GPT Response Message: {gpt_response_msg} \n")
+                # Speak the GPT response
+                self._speak(gpt_response_msg)
+            else:
+                # If user_speech_text is None, handle the case appropriately
+                logging.info("No valid input received. Please try speaking again.")
+                self._speak("I didn't catch that, could you please repeat?")
