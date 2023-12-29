@@ -30,9 +30,6 @@ TEMPERATURE = config("TEMPERATURE", default=1.2, cast=float)
 AUDIO_FORMAT = config("AUDIO_FORMAT", default="audio/wav")
 VOICE = config("VOICE", default="en-US_AllisonV3Voice")
 
-# Dialogue Constants
-FEEDBACK_INQUIRY = " Did this help put a smile to your face?"
-
 
 @ai_fn
 def is_feedback_inquiry_present(bot_text: str) -> bool:
@@ -62,34 +59,47 @@ def is_feedback_inquiry_present(bot_text: str) -> bool:
     return False  # Dummy return value for type checking
 
 
-# TODO: Adjust the tool to accept a parameter that indicates the type of request.
-# and return a feedback inquiry that is appropriate for that request type.
-@tool
-def get_feedback_inquiry(user_request_type: str) -> str:
-    """
-    Generates a feedback inquiry based on the user's request type.
-
-    Args:
-        user_request_type: A string categorizing the type of the user's request
-        (e.g., 'picture', 'joke', 'information').
-
-    Returns:
-        str: A tailored feedback inquiry message based on the request type.
-    """
-    if user_request_type == "picture":
-        return "Did you like the picture I sent?"
-    elif user_request_type == "joke":
-        return "Did that joke make you smile?"
-    # Add more conditions as necessary
-    else:
-        return "Was this information helpful to you?"
-
-
-# Enum class for sentiment analysis
 @ai_classifier
 class Sentiment(Enum):
+    """Classifies user text"""
+
     POSITIVE = "POSITIVE"
     NEGATIVE = "NEGATIVE"
+    NEUTRAL = "NEUTRAL"
+
+
+@tool
+def get_feedback_inquiry(user_request_type: str, user_sentiment: Sentiment) -> str:
+    """
+    Generates a feedback inquiry based on the user's request type and sentiment.
+
+    Args:
+        user_request_type: A string categorizing the type of the user's request.
+        user_sentiment: An enum value representing the sentiment of the user's request.
+
+    Returns:
+        str: A tailored feedback inquiry message based on the request type and
+        sentiment.
+    """
+    if user_request_type == "joke":
+        if user_sentiment == Sentiment.POSITIVE:
+            return "Did that joke make you smile?"
+        elif user_sentiment == Sentiment.NEGATIVE:
+            return "Did that joke help cheer you up a bit?"
+        else:  # NEUTRAL
+            return "What did you think of that joke?"
+
+    elif user_request_type == "picture":
+        return "Did you like the picture I sent?"
+
+    elif user_request_type == "motivational_quote":
+        if user_sentiment == Sentiment.NEGATIVE:
+            return "Did that quote uplift you?"
+        else:  # POSITIVE or NEUTRAL
+            return "How did you find that quote?"
+
+    else:
+        return "Was this information helpful to you?"
 
 
 class VoiceAssistant:
@@ -204,18 +214,32 @@ class VoiceAssistant:
         except ApiException as ex:
             logging.error(f"Method failed with status code {ex.code}: " f"{ex.message}")
 
-    def construct_gpt_prompt(self, user_input: str) -> str:
-        """Construct the GPT-3 prompt based on the user's sentiment."""
-        # Detect the sentiment of the user's text
-        detected_sentiment = Sentiment(user_input)
-        # If the sentiment is positive, return the user's text
-        if detected_sentiment == Sentiment.POSITIVE:
-            logging.info("Positive Sentiment Detected...")
-            return user_input
-        else:
-            # Return text appended with request for an empathetic response
+    def construct_gpt_prompt(
+        self,
+        user_input: str,
+        user_sentiment: Sentiment,
+        request_type: str,
+    ) -> str:
+        # Handling negative sentiment
+        if user_sentiment == Sentiment.NEGATIVE:
             logging.info("Negative Sentiment Detected...")
-            return user_input + " Requesting an empathetic response."
+            if request_type == "joke":
+                prompt = user_input + " Requesting an uplifting joke."
+            elif request_type == "motivational_quote":
+                prompt = user_input + " Requesting an inspiring quote."
+            else:
+                prompt = (
+                    user_input + " Requesting an uplifting response."
+                )  # Fallback for negative sentiment
+        # Handling positive sentiment
+        elif user_sentiment == Sentiment.POSITIVE:
+            logging.info("Positive Sentiment Detected...")
+            prompt = user_input  # Use the input as is for positive sentiment
+        # Handling neutral sentiment
+        else:  # Assuming this is Sentiment.NEUTRAL
+            logging.info("Neutral Sentiment Detected...")
+            prompt = user_input  # Standard handling for neutral sentiment
+        return prompt
 
     def categorize_user_request(self, user_input: str) -> str:
         # This function categorizes the user input into different request types.
@@ -229,12 +253,23 @@ class VoiceAssistant:
         else:
             return "general"
 
+    def detect_sentiment(self, user_input: str) -> Sentiment:
+        return Sentiment(user_input)
+
     def _generate_response(self, user_input: str) -> str:
         """Generate a GPT response to the user's text input."""
         try:
+            # Detect the sentiment of the user's text
+            user_sentiment = self.detect_sentiment(user_input)
 
-            # Construct the GPT prompt based on the user input
-            gpt_prompt = self.construct_gpt_prompt(user_input)
+            # Get the user request type
+            user_request_type = self.categorize_user_request(user_input)
+
+            # Construct the GPT prompt based on the user input, sentiment,
+            # and request type
+            gpt_prompt = self.construct_gpt_prompt(
+                user_input, user_sentiment, user_request_type
+            )
 
             # Update the conversation history with the user's input
             self.conversation_history.append({"role": "user", "content": gpt_prompt})
@@ -242,16 +277,12 @@ class VoiceAssistant:
             # Get the chatbot's response content
             gpt_response = self.chatbot(gpt_prompt).content
 
-            # Get the user request type
-            request_type = self.categorize_user_request(user_input)
+            # Generate feedback inquiry message from bot
+            feedback_inquiry = get_feedback_inquiry(user_request_type, user_sentiment)
 
-            # Get feedback inquiry message based on the request type.
-            feedback_inquiry = get_feedback_inquiry(request_type)
-
-            # Append specific feedback inquiry to gpt response if
-            # response doesn't contain feedback inquiry text already
+            # Append feedback inquiry if not already present in bot's response
             if not is_feedback_inquiry_present(gpt_response):
-                gpt_response += feedback_inquiry
+                gpt_response += " " + feedback_inquiry
 
             # Update the conversation history with the chatbot's response
             self.conversation_history.append({"role": "gpt", "content": gpt_response})
