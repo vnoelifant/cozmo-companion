@@ -65,14 +65,24 @@ def is_feedback_inquiry_present(bot_text: str) -> bool:
 # TODO: Adjust the tool to accept a parameter that indicates the type of request.
 # and return a feedback inquiry that is appropriate for that request type.
 @tool
-def get_feedback_inquiry() -> str:
+def get_feedback_inquiry(user_request_type: str) -> str:
     """
-    Returns an appropriate feedback inquiry string from the bot.
+    Generates a feedback inquiry based on the user's request type.
+
+    Args:
+        user_request_type: A string categorizing the type of the user's request
+        (e.g., 'picture', 'joke', 'information').
 
     Returns:
-        str: The feedback inquiry string.
+        str: A tailored feedback inquiry message based on the request type.
     """
-    return FEEDBACK_INQUIRY
+    if user_request_type == "picture":
+        return "Did you like the picture I sent?"
+    elif user_request_type == "joke":
+        return "Did that joke make you smile?"
+    # Add more conditions as necessary
+    else:
+        return "Was this information helpful to you?"
 
 
 # Enum class for sentiment analysis
@@ -194,24 +204,37 @@ class VoiceAssistant:
         except ApiException as ex:
             logging.error(f"Method failed with status code {ex.code}: " f"{ex.message}")
 
-    def construct_gpt_prompt(self, text):
+    def construct_gpt_prompt(self, user_input: str) -> str:
         """Construct the GPT-3 prompt based on the user's sentiment."""
         # Detect the sentiment of the user's text
-        detected_sentiment = Sentiment(text)
+        detected_sentiment = Sentiment(user_input)
         # If the sentiment is positive, return the user's text
         if detected_sentiment == Sentiment.POSITIVE:
             logging.info("Positive Sentiment Detected...")
-            return text
+            return user_input
         else:
             # Return text appended with request for an empathetic response
             logging.info("Negative Sentiment Detected...")
-            return text + " Requesting an empathetic response."
+            return user_input + " Requesting an empathetic response."
 
-    def _generate_response(self, text):
+    def categorize_user_request(self, user_input: str) -> str:
+        # This function categorizes the user input into different request types.
+        if "joke" in user_input.lower():
+            return "joke"
+        elif "motivational quote" in user_input.lower():
+            return "motivational_quote"
+        elif "picture" in user_input.lower():
+            return "picture"
+        # Add more categories as necessary
+        else:
+            return "general"
+
+    def _generate_response(self, user_input: str) -> str:
         """Generate a GPT response to the user's text input."""
         try:
-            # Construct the GPT prompt based on the input text
-            gpt_prompt = self.construct_gpt_prompt(text)
+
+            # Construct the GPT prompt based on the user input
+            gpt_prompt = self.construct_gpt_prompt(user_input)
 
             # Update the conversation history with the user's input
             self.conversation_history.append({"role": "user", "content": gpt_prompt})
@@ -219,22 +242,16 @@ class VoiceAssistant:
             # Get the chatbot's response content
             gpt_response = self.chatbot(gpt_prompt).content
 
-            # TODO:  implement logic to determine the request type based
-            # on the user's input, and then use this information to get
-            # the appropriate feedback inquiry
-            # Generate list of tokens to trigger a feedback inquiry question from GPT
-            feedback_inquiry_user_tokens = ["joke", "motivational quote"]
+            # Get the user request type
+            request_type = self.categorize_user_request(user_input)
 
-            # Check if gpt_prompt contains any of the feedback inquiry user tokens
-            if any(
-                token in gpt_prompt.lower() for token in feedback_inquiry_user_tokens
-            ):
-                feedback_inquiry = get_feedback_inquiry()
+            # Get feedback inquiry message based on the request type.
+            feedback_inquiry = get_feedback_inquiry(request_type)
 
-                # Append specific feedback inquiry to gpt response if
-                # response doesn't contain feedback inquiry text already
-                if not is_feedback_inquiry_present(gpt_response):
-                    gpt_response += feedback_inquiry
+            # Append specific feedback inquiry to gpt response if
+            # response doesn't contain feedback inquiry text already
+            if not is_feedback_inquiry_present(gpt_response):
+                gpt_response += feedback_inquiry
 
             # Update the conversation history with the chatbot's response
             self.conversation_history.append({"role": "gpt", "content": gpt_response})
