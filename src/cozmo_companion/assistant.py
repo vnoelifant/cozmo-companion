@@ -30,11 +30,15 @@ TEMPERATURE = config("TEMPERATURE", default=1.2, cast=float)
 AUDIO_FORMAT = config("AUDIO_FORMAT", default="audio/wav")
 VOICE = config("VOICE", default="en-US_AllisonV3Voice")
 
+# Dialogue Constants
+DEFAULT_SENTIMENT_RESPONSE = "default_sentiment_response"
+DEFAULT_REQUEST_TYPE_RESPONSE = "default_request_type_response"
+
 
 @ai_fn
 def is_feedback_inquiry_present(bot_text: str) -> bool:
     """
-    Analyzes the bot's response to determine if it contains a feedback inquiry.
+    Analyzes the bot's response {{ bot_text }} to determine if it contains a feedback inquiry.
 
     The function leverages natural language understanding to interpret the text and
     identify feedback-related phrases, taking into account the context and subtleties
@@ -81,25 +85,33 @@ def get_feedback_inquiry(user_request_type: str, user_sentiment: Sentiment) -> s
         str: A tailored feedback inquiry message based on the request type and
         sentiment.
     """
-    if user_request_type == "joke":
-        if user_sentiment == Sentiment.POSITIVE:
-            return "Did that joke make you smile?"
-        elif user_sentiment == Sentiment.NEGATIVE:
-            return "Did that joke help cheer you up a bit?"
-        else:  # NEUTRAL
-            return "What did you think of that joke?"
+    feedback_inquiries = {
+        "joke": {
+            Sentiment.POSITIVE: "Did that joke make you smile?",
+            Sentiment.NEGATIVE: "Did that joke help cheer you up a bit?",
+            Sentiment.NEUTRAL: "What did you think of that joke?",
+            DEFAULT_SENTIMENT_RESPONSE: "How was the joke?",
+        },
+        "picture": "Did you like the picture I sent?",
+        "motivational_quote": {
+            Sentiment.NEGATIVE: "Did that quote uplift you?",
+            DEFAULT_SENTIMENT_RESPONSE: "How did you find that quote?",
+        },
+        DEFAULT_REQUEST_TYPE_RESPONSE: "Was this information helpful to you?",
+    }
 
-    elif user_request_type == "picture":
-        return "Did you like the picture I sent?"
+    feedback_for_request_type = feedback_inquiries.get(
+        user_request_type, feedback_inquiries[DEFAULT_REQUEST_TYPE_RESPONSE]
+    )
 
-    elif user_request_type == "motivational_quote":
-        if user_sentiment == Sentiment.NEGATIVE:
-            return "Did that quote uplift you?"
-        else:  # POSITIVE or NEUTRAL
-            return "How did you find that quote?"
-
+    if isinstance(feedback_for_request_type, dict):
+        feedback_message = feedback_for_request_type.get(
+            user_sentiment,
+            feedback_for_request_type.get(DEFAULT_SENTIMENT_RESPONSE, ""),
+        )
+        return str(feedback_message)
     else:
-        return "Was this information helpful to you?"
+        return str(feedback_for_request_type)
 
 
 class VoiceAssistant:
