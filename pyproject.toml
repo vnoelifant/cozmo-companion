@@ -28,6 +28,7 @@ dependencies = [
   "isort",
   "mypy",
   "flake8",
+  "ruff",
 ]
 
 [project.urls]
