@@ -1,6 +1,9 @@
 import pytest
 
-from src.cozmo_companion.assistant import is_feedback_inquiry_present
+from src.cozmo_companion.assistant import (
+    is_feedback_inquiry_present,
+    get_feedback_inquiry,
+)
 
 
 @pytest.mark.parametrize(
@@ -25,3 +28,15 @@ def test_is_feedback_inquiry_present(bot_text, expected):
     feedback_present = is_feedback_inquiry_present(bot_text)
 
     assert feedback_present == expected
+
+
+@pytest.mark.parametrize(
+    "user_request_type, user_sentiment, expected",
+    [
+        pytest.param("joke", "positive", "Did that joke make you smile?"),
+    ],
+)
+def test_get_feedback_inquiry(user_request_type, user_sentiment, expected):
+    feedback_inquiry = get_feedback_inquiry(user_request_type, user_sentiment)
+
+    assert feedback_inquiry == expected
