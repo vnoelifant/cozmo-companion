@@ -1,15 +1,19 @@
 import pytest
 import marvin
+import src.cozmo_companion.assistant as assistant
 from datetime import datetime
-# from unittest.mock import patch
-
+from ibm_watson import SpeechToTextV1, TextToSpeechV1
 from src.cozmo_companion.assistant import (
     is_feedback_inquiry_present,
     get_feedback_inquiry,
     Sentiment,
     VoiceAssistant,
-    SpeechToTextV1,
-    TextToSpeechV1,
+    CONTENT_TYPE,
+    WORD_ALTERNATIVE_THRESHOLDS,
+    KEYWORDS,
+    KEYWORDS_THRESHOLD,
+    VOICE,
+    AUDIO_FORMAT,
 )
 
 
@@ -39,6 +43,83 @@ def test_marvin_services_initialization(monkeypatch):
     # Assert that marvin settings were correctly assigned from environment variables
     assert marvin.settings.openai.api_key.get_secret_value() == "fake_api_key"
     assert marvin.settings.openai.chat.completions.model == "fake_model"
+
+
+def test_listen_records_and_transcribes_speech(mocker, tmp_path):
+    # Mock the creation of a WAV file to a known location
+    audio_file_path = tmp_path / "test_audio.wav"
+    mocker.patch(
+        "src.cozmo_companion.assistant.VoiceAssistant._create_wav_file",
+        return_value=str(audio_file_path),
+    )
+
+    # Mock Recorder's record method to simulate successful recording
+    mock_record = mocker.patch(
+        "src.cozmo_companion.recorder.Recorder.record", return_value=None
+    )
+
+    # Mock the file open operation to simulate the presence of recorded audio
+    mocker.patch("builtins.open", mocker.mock_open(read_data=b"fake audio data"))
+
+    # Prepare a mock speech-to-text response
+    transcription_response = {
+        "results": [{"alternatives": [{"transcript": "hello world"}]}]
+    }
+
+    # Mock SpeechToTextV1's recognize method to return the predefined transcription response
+    mock_recognize = mocker.patch.object(
+        SpeechToTextV1,
+        "recognize",
+        return_value=mocker.Mock(get_result=lambda: transcription_response),
+    )
+
+    assistant = VoiceAssistant()
+    transcribed_text = assistant._listen()
+
+    # Assertions
+    assert transcribed_text == "hello world"
+    mock_record.assert_called_once()
+    mock_recognize.assert_called_once()
+
+    # Assert that the recognize method was called with expected arguments
+    mock_recognize.assert_called_once_with(
+        audio=mocker.ANY,  # Indicates we're not specifying exactly what the audio file object is
+        content_type=CONTENT_TYPE,
+        word_alternatives_threshold=WORD_ALTERNATIVE_THRESHOLDS,
+        keywords=KEYWORDS,
+        keywords_threshold=KEYWORDS_THRESHOLD,
+    )
+
+
+def test_text_to_speech_conversion(mocker, tmp_path):
+    # Use mocker.Mock() to specify the return structure of the mock
+    synthesis_mock = mocker.Mock(get_result=mocker.Mock(content=b"audio data"))
+    mock_synthesize = mocker.patch.object(
+        TextToSpeechV1, "synthesize", return_value=synthesis_mock
+    )
+
+    # Define the expected file path
+    bot_speech_file = tmp_path / "bot_speech.wav"
+    mocker.patch(
+        "src.cozmo_companion.assistant.VoiceAssistant._create_wav_file",
+        return_value=str(bot_speech_file),
+    )
+
+    # Mock the play function to prevent actual playback during tests
+    mocker.patch("pydub.playback.play")
+
+    test_text = "Test speech"
+    assistant = VoiceAssistant()
+    assistant._speak(test_text)
+
+    # Assert that the synthesized audio file exists and contains the expected content
+    assert bot_speech_file.exists()
+    assert bot_speech_file.read_bytes() == b"audio data"
+
+    # Assert that synthesize was called with expected arguments
+    mock_synthesize.assert_called_once_with(
+        text=test_text, voice=VOICE, accept=AUDIO_FORMAT
+    )
 
 
 def test_wav_file_creation(mocker, tmp_path):
@@ -74,6 +155,20 @@ def test_conversation_history_update(mocker):
 
 
 @pytest.mark.parametrize(
+    "input_text, expected_sentiment",
+    [
+        ("I am happy", Sentiment.POSITIVE),
+        ("I am sad", Sentiment.NEGATIVE),
+        ("I am okay", Sentiment.NEUTRAL),
+    ],
+)
+def test_detect_sentiment(input_text, expected_sentiment):
+    assistant = VoiceAssistant()
+    sentiment = assistant.detect_sentiment(input_text)
+    assert sentiment == expected_sentiment
+
+
+@pytest.mark.parametrize(
     "request_type, expected_response",
     [
         ("joke", "Requesting an uplifting joke."),
@@ -92,7 +187,7 @@ def test_response_generation_with_negative_sentiment(
     )
 
     assistant = VoiceAssistant()
-    response = assistant._generate_response("Tell me a joke.")
+    response = assistant._generate_response("I feel horrible. Can you tell me a joke?")
 
     assert expected_response in response
 
@@ -116,6 +211,39 @@ def test_start_session(mocker):
             mocker.call("Goodbye!"),
         ]
     )
+
+
+def test_exit_condition_handling(mocker):
+    # Mock the _listen method to simulate receiving "exit"
+    mocker.patch("assistant.VoiceAssistant._listen", side_effect=["exit"])
+    # Assuming _generate_response would generate a "Goodbye!" response upon "exit"
+    mock_generate_response = mocker.patch(
+        "assistant.VoiceAssistant._generate_response", return_value="Goodbye!"
+    )
+    # Mock the _speak method to avoid actual speech synthesis during the test
+    mock_speak = mocker.patch("assistant.VoiceAssistant._speak")
+
+    assistant = VoiceAssistant()
+    assistant.start_session()  # Trigger the session, which should handle the "exit" condition
+
+    # Verify that _generate_response was called with "exit", leading to a "Goodbye!" response
+    mock_generate_response.assert_called_once_with("exit")
+    # Verify that _speak was called with the "Goodbye!" response
+    mock_speak.assert_called_once_with("Goodbye!")
+
+
+def test_error_handling_in_generate_response(mocker):
+    mocker.patch("assistant.VoiceAssistant._listen", return_value="Some input")
+    mocker.patch(
+        "assistant.VoiceAssistant.detect_sentiment",
+        side_effect=assistant.ApiException("API error"),
+    )
+    mock_speak = mocker.patch("assistant.VoiceAssistant._speak")
+
+    assistant_obj = VoiceAssistant()
+    assistant_obj.start_session()
+
+    mock_speak.assert_called_with("I'm sorry, I couldn't process that.")
 
 
 @pytest.mark.parametrize(
