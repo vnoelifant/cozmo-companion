@@ -5,7 +5,7 @@ import pytest
 def mock_speech_settings(mocker):
     mocker.patch('marvin.settings.openai.audio.speech.voice', 'echo')
 
-"""
+
 
 import pytest
 from decouple import config
@@ -17,3 +17,5 @@ def override_voice_variable(monkeypatch):
     monkeypatch.setenv("VOICE", "echo")  # Set to a valid value for `marvin`
     yield
     monkeypatch.setenv("VOICE", original_voice)  # Reset after tests
+
+"""
