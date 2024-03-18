@@ -19,3 +19,8 @@ def override_voice_variable(monkeypatch):
     monkeypatch.setenv("VOICE", original_voice)  # Reset after tests
 
 """
+import sys
+from pathlib import Path
+
+# Add the project root directory to sys.path
+sys.path.append(str(Path(__file__).parent.parent))
