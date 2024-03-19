@@ -140,10 +140,12 @@ def test_conversation_history_update(mocker):
     """
     Test that conversation history is updated correctly during a session.
     """
-    # Mock the _listen and _generate_response methods
+    # Mock the _listen method to return "Hello" on the first call and "exit" on the second call
     mocker.patch(
-        "src.cozmo_companion.assistant.VoiceAssistant._listen", return_value="Hello"
+        "src.cozmo_companion.assistant.VoiceAssistant._listen",
+        side_effect=["Hello", "exit"],
     )
+    # Mock the _generate_response method to return "Hi there!"
     mocker.patch(
         "src.cozmo_companion.assistant.VoiceAssistant._generate_response",
         return_value="Hi there!",
@@ -164,6 +166,11 @@ def test_conversation_history_update(mocker):
     assert (
         assistant.conversation_history[1]["content"] == "Hi there!"
     ), "The second entry's content should match the mocked response."
+
+    # Verify that the loop exits
+    assert (
+        "exit" in assistant.conversation_history[-1]["content"]
+    ), "The last entry should contain 'exit' to indicate the end of the session."
 
 
 @pytest.mark.parametrize(
