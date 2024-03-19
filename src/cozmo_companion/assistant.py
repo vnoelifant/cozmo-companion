@@ -7,8 +7,7 @@ import marvin
 from decouple import config
 from ibm_cloud_sdk_core.authenticators import IAMAuthenticator
 from ibm_watson import ApiException, SpeechToTextV1, TextToSpeechV1
-from marvin import AIApplication, ai_classifier, ai_fn
-from marvin.tools import tool
+from marvin.beta import Application
 from pydub import AudioSegment
 from pydub.playback import play
 
@@ -25,17 +24,17 @@ KEYWORDS = config("KEYWORDS", default="hey,hi,watson,friend,meet").split(",")
 KEYWORDS_THRESHOLD = config("KEYWORDS_THRESHOLD", default=0.5, cast=float)
 MAX_TOKENS = config("MAX_TOKENS", default=1000, cast=int)
 TEMPERATURE = config("TEMPERATURE", default=1.2, cast=float)
-
+VOICE = config("VOICE", default="en-US_AllisonV3Voice")
 # Watson Text to Speech Configuration
 AUDIO_FORMAT = config("AUDIO_FORMAT", default="audio/wav")
-VOICE = config("VOICE", default="en-US_AllisonV3Voice")
+
 
 # Dialogue Constants
 DEFAULT_SENTIMENT_RESPONSE = "default_sentiment_response"
 DEFAULT_REQUEST_TYPE_RESPONSE = "default_request_type_response"
 
 
-@ai_fn
+@marvin.fn
 def is_feedback_inquiry_present(bot_text: str) -> bool:
     """
     Analyzes the bot's response {{ bot_text }} to determine if it contains a feedback inquiry.
@@ -63,7 +62,6 @@ def is_feedback_inquiry_present(bot_text: str) -> bool:
     return False  # Dummy return value for type checking
 
 
-@ai_classifier
 class Sentiment(Enum):
     """Classifies user text"""
 
@@ -72,7 +70,6 @@ class Sentiment(Enum):
     NEUTRAL = "NEUTRAL"
 
 
-@tool
 def get_feedback_inquiry(user_request_type: str, user_sentiment: Sentiment) -> str:
     """
     Generates a feedback inquiry based on the user's request type and sentiment.
@@ -126,8 +123,8 @@ class VoiceAssistant:
         """Initialize the VoiceAssistant and its services."""
         self._configure_services()
         # Setting up the chatbot with description and tools
-        self.chatbot = AIApplication(
-            description=(
+        self.chatbot = Application(
+            instructions=(
                 "A friendly, supportive chatbot."
                 "It always provides an empathetic response when it detects"
                 "negative sentiment."
@@ -148,7 +145,9 @@ class VoiceAssistant:
         )
         # Setting up Marvin settings
         marvin.settings.openai.api_key = config("MARVIN_OPENAI_API_KEY")
-        marvin.settings.llm_model = config("MARVIN_LLM_MODEL")
+        marvin.settings.openai.chat.completions.model = config(
+            "MARVIN_CHAT_COMPLETIONS_MODEL"
+        )
 
     def _initialize_ibm_service(self, api_key, url):
         """
@@ -266,7 +265,7 @@ class VoiceAssistant:
             return "general"
 
     def detect_sentiment(self, user_input: str) -> Sentiment:
-        return Sentiment(user_input)
+        return marvin.classify(user_input, Sentiment)
 
     def _generate_response(self, user_input: str) -> str:
         """Generate a GPT response to the user's text input."""
