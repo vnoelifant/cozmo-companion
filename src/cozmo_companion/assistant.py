@@ -131,6 +131,7 @@ class VoiceAssistant:
             ),
             tools=[get_feedback_inquiry],
         )
+        self.last_sentiment = Sentiment.NEUTRAL  # Initialize last sentiment as NEUTRAL
         # Initializing conversation history to store user and bot interactions
         self.conversation_history = []
 
@@ -225,33 +226,6 @@ class VoiceAssistant:
         except ApiException as ex:
             logging.error(f"Method failed with status code {ex.code}: " f"{ex.message}")
 
-    def construct_gpt_prompt(
-        self,
-        user_input: str,
-        user_sentiment: Sentiment,
-        request_type: str,
-    ) -> str:
-        # Handling negative sentiment
-        if user_sentiment == Sentiment.NEGATIVE:
-            logging.info("Negative Sentiment Detected...")
-            if request_type == "joke":
-                prompt = user_input + " Requesting an uplifting joke."
-            elif request_type == "motivational_quote":
-                prompt = user_input + " Requesting an inspiring quote."
-            else:
-                prompt = (
-                    user_input + " Requesting an uplifting response."
-                )  # Fallback for negative sentiment
-        # Handling positive sentiment
-        elif user_sentiment == Sentiment.POSITIVE:
-            logging.info("Positive Sentiment Detected...")
-            prompt = user_input  # Use the input as is for positive sentiment
-        # Handling neutral sentiment
-        else:  # Assuming this is Sentiment.NEUTRAL
-            logging.info("Neutral Sentiment Detected...")
-            prompt = user_input  # Standard handling for neutral sentiment
-        return prompt
-
     def categorize_user_request(self, user_input: str) -> str:
         # This function categorizes the user input into different request types.
         if "joke" in user_input.lower():
@@ -270,40 +244,39 @@ class VoiceAssistant:
     def _generate_response(self, user_input: str) -> str:
         """Generate a GPT response to the user's text input."""
         try:
-            # Detect the sentiment of the user's text
-            user_sentiment = self.detect_sentiment(user_input)
-
-            # Get the user request type
+            # Detect the sentiment of the user's current input
+            current_sentiment = self.detect_sentiment(user_input)
+            # Get the user's request type from the current input
             user_request_type = self.categorize_user_request(user_input)
 
-            # Construct the GPT prompt based on the user input, sentiment,
-            # and request type
-            gpt_prompt = self.construct_gpt_prompt(
-                user_input, user_sentiment, user_request_type
+            # Get the GPT response
+            gpt_response = self.chatbot(user_input).content
+
+            # If the last sentiment was negative, customize the response based on request type
+            if self.last_sentiment == Sentiment.NEGATIVE and user_request_type in [
+                "joke",
+                "motivational_quote",
+                "picture",
+            ]:
+                gpt_response += "\nI understand things might be tough. Here's something to brighten your day!"
+
+            # Append feedback inquiry if not already present in the GPT response
+            feedback_inquiry = get_feedback_inquiry(
+                user_request_type, current_sentiment
             )
-
-            # Update the conversation history with the user's input
-            self.conversation_history.append({"role": "user", "content": gpt_prompt})
-
-            # Get the chatbot's response content
-            gpt_response = self.chatbot(gpt_prompt).content
-
-            # Generate feedback inquiry message from bot
-            feedback_inquiry = get_feedback_inquiry(user_request_type, user_sentiment)
-
-            # Append feedback inquiry if not already present in bot's response
             if not is_feedback_inquiry_present(gpt_response):
                 gpt_response += " " + feedback_inquiry
 
-            # Update the conversation history with the chatbot's response
+            # Update the conversation history with the user's input and the GPT response
+            self.conversation_history.append({"role": "user", "content": user_input})
             self.conversation_history.append({"role": "gpt", "content": gpt_response})
 
-            # logging.info the conversation log
-            logging.info(f"Conversation Log: {self.conversation_history}")
+            # Update self.last_sentiment to the current sentiment for use in the next interaction
+            self.last_sentiment = current_sentiment
 
             return gpt_response
         except Exception as e:
-            logging.error(f"Error getting GPT completion: {e}", exc_info=True)
+            logging.error(f"Error generating response: {e}", exc_info=True)
             return "I'm sorry, I couldn't process that."
 
     def _speak(self, text):
