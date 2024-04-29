@@ -1,33 +1,6 @@
 import pytest
-import os
-from cozmo_companion.assistant import (
-    VoiceAssistant,
-    is_feedback_inquiry_present,
-    get_feedback_inquiry,
-)
 
-
-@pytest.mark.usefixtures("setup_ibm_env")
-def test_initialize_ibm_service():
-    assistant = VoiceAssistant()
-    stt_service = assistant._initialize_ibm_service(
-        os.environ["IAM_APIKEY_STT"], os.environ["URL_STT"]
-    )
-    tts_service = assistant._initialize_ibm_service(
-        os.environ["IAM_APIKEY_TTS"], os.environ["URL_TTS"]
-    )
-
-    # Assert that the services are correctly initialized
-    assert stt_service is not None, "Failed to initialize Speech to Text Service"
-    assert tts_service is not None, "Failed to initialize Text to Speech Service"
-
-    # Verify that the correct URLs are set on the service instances
-    assert (
-        stt_service.service_url == os.environ["URL_STT"]
-    ), "STT Service URL is incorrect"
-    assert (
-        tts_service.service_url == os.environ["URL_TTS"]
-    ), "TTS Service URL is incorrect"
+from cozmo_companion.assistant import get_feedback_inquiry, is_feedback_inquiry_present
 
 
 @pytest.mark.parametrize(

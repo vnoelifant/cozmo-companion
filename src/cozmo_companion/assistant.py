@@ -144,11 +144,9 @@ class VoiceAssistant:
         self.TEXT_TO_SPEECH = self._initialize_ibm_service(
             config("IAM_APIKEY_TTS"), config("URL_TTS")
         )
-        # Setting up Marvin settings
-        marvin.settings.openai.api_key = config("MARVIN_OPENAI_API_KEY")
-        marvin.settings.openai.chat.completions.model = config(
-            "MARVIN_CHAT_COMPLETIONS_MODEL"
-        )
+
+        # Configure Marvin settings
+        self._configure_marvin_settings()
 
     def _initialize_ibm_service(self, api_key, url):
         """
@@ -172,6 +170,14 @@ class VoiceAssistant:
             )
         service.set_service_url(url)
         return service
+
+    def _configure_marvin_settings(self):
+        """Configure Marvin settings for the voice assistant."""
+        # Setting up Marvin settings
+        marvin.settings.openai.api_key = config("MARVIN_OPENAI_API_KEY")
+        marvin.settings.openai.chat.completions.model = config(
+            "MARVIN_CHAT_COMPLETIONS_MODEL"
+        )
 
     @staticmethod
     def _create_wav_file(prefix=""):
