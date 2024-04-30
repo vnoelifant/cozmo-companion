@@ -1,6 +1,33 @@
 import pytest
 
-from cozmo_companion.assistant import get_feedback_inquiry, is_feedback_inquiry_present
+from cozmo_companion.assistant import (
+    VoiceAssistant,
+    get_feedback_inquiry,
+    is_feedback_inquiry_present,
+)
+
+
+@pytest.fixture
+def assistant():
+    return VoiceAssistant()
+
+
+@pytest.mark.parametrize(
+    "user_input, expected",
+    [
+        ("Can you tell me a joke?", "joke"),
+        ("Can you show me a picture?", "picture"),
+        ("I like talking to you", "general"),
+    ],
+)
+def test_request_categorization(assistant, user_input, expected):
+    """
+    Test the categorization of user requests based on the input text.
+    """
+    request_type = assistant.categorize_user_request(user_input)
+    assert (
+        request_type == expected
+    ), "Request categorization should match the expected outcome."
 
 
 @pytest.mark.parametrize(
