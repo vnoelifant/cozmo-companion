@@ -87,12 +87,19 @@ def get_feedback_inquiry(user_request_type: str, user_sentiment: Sentiment) -> s
             Sentiment.POSITIVE: "Did that joke make you smile?",
             Sentiment.NEGATIVE: "Did that joke help cheer you up a bit?",
             Sentiment.NEUTRAL: "What did you think of that joke?",
-            DEFAULT_SENTIMENT_RESPONSE: "How was the joke?",
+            DEFAULT_SENTIMENT_RESPONSE: "How did you like that joke?",
         },
-        "picture": "Did you like the picture I sent?",
+        "picture": {
+            Sentiment.POSITIVE: "Did that picture make you smile?",
+            Sentiment.NEGATIVE: "Did that picture help cheer you up a bit?",
+            Sentiment.NEUTRAL: "What did you think of that picture?",
+            DEFAULT_SENTIMENT_RESPONSE: "How did you like that picture?",
+        },
         "motivational_quote": {
+            Sentiment.POSITIVE: "Did that quote make you smile?",
             Sentiment.NEGATIVE: "Did that quote uplift you?",
-            DEFAULT_SENTIMENT_RESPONSE: "How did you find that quote?",
+            Sentiment.NEUTRAL: "What did you think of that quote?",
+            DEFAULT_SENTIMENT_RESPONSE: "How did you like that quote?",
         },
         DEFAULT_REQUEST_TYPE_RESPONSE: "Was this information helpful to you?",
     }
@@ -245,6 +252,7 @@ class VoiceAssistant:
             return "general"
 
     def detect_sentiment(self, user_input: str) -> Sentiment:
+        """Detect the sentiment of the user's input using Marvin."""
         return marvin.classify(user_input, Sentiment)
 
     def _generate_response(self, user_input: str) -> str:

@@ -40,3 +40,9 @@ cozmo = "cozmo_companion.cli:app"
 
 [tool.mypy]
 ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+addopts = "-v"
+markers = [
+    "integration: mark tests as integration tests for external services and environment configurations.",
+]
