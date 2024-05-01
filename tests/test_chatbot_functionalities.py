@@ -58,6 +58,7 @@ def test_detect_sentiment(configured_assistant, user_input, expected):
     ), f"Detected sentiment does not match expected. Expected {expected}, got {sentiment}"
 
 
+@pytest.mark.integration
 @pytest.mark.parametrize(
     "bot_text, expected",
     [
