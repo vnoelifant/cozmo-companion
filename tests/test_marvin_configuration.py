@@ -6,6 +6,7 @@ import pytest
 from cozmo_companion.assistant import VoiceAssistant
 
 
+@pytest.mark.integration
 @pytest.mark.usefixtures("setup_marvin_env")
 def test_configure_marvin_settings():
     assistant = VoiceAssistant()

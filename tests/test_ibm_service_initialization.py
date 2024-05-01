@@ -11,6 +11,7 @@ def assistant(setup_ibm_env):
     return VoiceAssistant()
 
 
+@pytest.mark.integration
 class TestIBMServiceInitialization:
     @pytest.mark.parametrize(
         "api_key_env, url_env, service_name",
