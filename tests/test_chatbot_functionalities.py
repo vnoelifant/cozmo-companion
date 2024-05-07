@@ -11,7 +11,7 @@ from cozmo_companion.assistant import (
 
 @pytest.fixture
 def assistant():
-    """Fixture to provide a basic Voice Assistant"""
+    """Fixture that provides a basic instance of VoiceAssistant without any prior configuration."""
     return VoiceAssistant()
 
 
@@ -26,8 +26,8 @@ def configured_assistant():
 @pytest.fixture
 def voice_assistant_with_mocked_io(setup_marvin_env):
     """
-    Provides a VoiceAssistant with mocked I/O operations.
-    Useful for tests simulating user interaction without real IO.
+    Provides a VoiceAssistant instance with mocked I/O operations to simulate user interactions.
+    This fixture is useful for tests that require simulating speech-to-text and text-to-speech without actual I/O.
     """
     assistant = VoiceAssistant()
     assistant.last_sentiment = Sentiment.NEUTRAL  # Initialize last sentiment to NEUTRAL
@@ -38,6 +38,11 @@ def voice_assistant_with_mocked_io(setup_marvin_env):
 
 # Test class for basic functionalities
 class TestBasicFunctionality:
+    """
+    A test suite for verifying the basic functionalities of the VoiceAssistant,
+    focusing on user request categorization and expected bot feedback inquiry response based on user sentiment and request type.
+    """
+
     @pytest.mark.parametrize(
         "user_request_type, user_sentiment, expected_output",
         [
@@ -130,6 +135,23 @@ class TestBasicFunctionality:
 # Test class for integration scenarios
 @pytest.mark.integration
 class TestIntegrationScenarios:
+    """
+    A test suite for evaluating the integrated behavior of the VoiceAssistant, focusing on its ability to
+    dynamically and contextually interact with users. This includes accurately detecting sentiments,
+    incorporating relevant feedback based on ongoing interactions, and adapting responses according to the
+    conversational context and user's emotional state.
+
+    These tests ensure that the VoiceAssistant can:
+    - Accurately detect and interpret the sentiment expressed in user inputs.
+    - Identify whether a feedback inquiry is appropriately included in the assistant's responses.
+    - Manage a sequence of interactions effectively, applying correct sentiment analysis and
+      generating contextually appropriate feedback inquiries, simulating realistic user interactions.
+
+    This suite is crucial for validating the integration of sentiment analysis, feedback mechanisms,
+    and overall conversational logic in scenarios that mimic real-world usage, ensuring the assistant's
+    reliability and accuracy in user interactions.
+    """
+
     @pytest.mark.parametrize(
         "user_input, expected",
         [
@@ -140,7 +162,7 @@ class TestIntegrationScenarios:
     )
     def test_detect_sentiment(self, configured_assistant, user_input, expected):
         """
-        Integration test to verify sentiment detection of user input.
+        Tests verification of sentiment detection based on user input.
         """
         sentiment = configured_assistant.detect_sentiment(user_input)
         assert (
