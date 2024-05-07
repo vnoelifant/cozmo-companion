@@ -7,7 +7,7 @@ import marvin
 from decouple import config
 from ibm_cloud_sdk_core.authenticators import IAMAuthenticator
 from ibm_watson import ApiException, SpeechToTextV1, TextToSpeechV1
-from marvin.beta import Application
+from marvin.beta.applications import Application
 from pydub import AudioSegment
 from pydub.playback import play
 
@@ -131,6 +131,7 @@ class VoiceAssistant:
         self._configure_services()
         # Setting up the chatbot with description and tools
         self.chatbot = Application(
+            name="Companion",
             instructions=(
                 "A friendly, supportive chatbot."
                 "It always provides an empathetic response when it detects"
@@ -264,19 +265,11 @@ class VoiceAssistant:
             user_request_type = self.categorize_user_request(user_input)
 
             # Get the GPT response
-            gpt_response = self.chatbot(user_input).content
-
-            # If the last sentiment was negative, customize the response based on request type
-            if self.last_sentiment == Sentiment.NEGATIVE and user_request_type in [
-                "joke",
-                "motivational_quote",
-                "picture",
-            ]:
-                gpt_response += "\nI understand things might be tough. Here's something to brighten your day!"
+            gpt_response = self.chatbot.say_async(user_input)
 
             # Append feedback inquiry if not already present in the GPT response
             feedback_inquiry = get_feedback_inquiry(
-                user_request_type, current_sentiment
+                user_request_type, self.last_sentiment
             )
             if not is_feedback_inquiry_present(gpt_response):
                 gpt_response += " " + feedback_inquiry

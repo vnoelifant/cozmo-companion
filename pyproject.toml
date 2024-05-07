@@ -24,11 +24,13 @@ dependencies = [
   "typer[all]",
   "PyAudio",
   "openai",
+  "marvin",
   "anki_vector",
   "isort",
   "mypy",
   "flake8",
   "ruff",
+  "mockito",
 ]
 
 [project.urls]
