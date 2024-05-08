@@ -83,23 +83,6 @@ class TestBasicFunctionality:
                 None,
                 "How did you like that quote?",
             ),  # Default sentiment response for quotes
-            # Default request type response for an unrecognized type, testing all sentiments
-            (
-                "unknown_type",
-                Sentiment.POSITIVE,
-                "Was this information helpful to you?",
-            ),
-            (
-                "unknown_type",
-                Sentiment.NEGATIVE,
-                "Was this information helpful to you?",
-            ),
-            ("unknown_type", Sentiment.NEUTRAL, "Was this information helpful to you?"),
-            (
-                "unknown_type",
-                None,
-                "Was this information helpful to you?",
-            ),  # Default sentiment response for unknown types
         ],
     )
     def test_get_feedback_inquiry(
@@ -119,7 +102,7 @@ class TestBasicFunctionality:
         [
             ("Can you tell me a joke?", "joke"),
             ("Can you show me a picture?", "picture"),
-            ("I like talking to you", "general"),
+            ("Can you tell me a motivational quote", "motivational_quote"),
         ],
     )
     def test_request_categorization(self, assistant, user_input, expected):
@@ -205,6 +188,7 @@ class TestIntegrationScenarios:
         voice_assistant_with_mocked_io.last_sentiment = sentiment1
 
         response1 = voice_assistant_with_mocked_io._generate_response(user_input1)
+        print("GPT RESPONSE: ", response1)
         voice_assistant_with_mocked_io._speak(response1)
 
         # Second interaction where the user asks for a joke

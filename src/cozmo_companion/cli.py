@@ -1,4 +1,5 @@
 import typer
+import asyncio
 
 # Importing the VoiceAssistant class from the assistant module
 from .assistant import VoiceAssistant
@@ -20,7 +21,7 @@ def converse():
     assistant = VoiceAssistant()
     try:
         # Starting the session with the user
-        assistant.start_session()
+        asyncio.run(assistant.start_session())
     except KeyboardInterrupt:
         # Handling keyboard interrupt to gracefully exit the application
         print("\nClosing via keyboard interrupt.")

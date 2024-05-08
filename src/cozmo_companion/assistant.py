@@ -104,18 +104,14 @@ def get_feedback_inquiry(user_request_type: str, user_sentiment: Sentiment) -> s
         DEFAULT_REQUEST_TYPE_RESPONSE: "Was this information helpful to you?",
     }
 
-    feedback_for_request_type = feedback_inquiries.get(
-        user_request_type, feedback_inquiries[DEFAULT_REQUEST_TYPE_RESPONSE]
-    )
+    feedback_for_request_type = feedback_inquiries.get(user_request_type)
 
     if isinstance(feedback_for_request_type, dict):
         feedback_message = feedback_for_request_type.get(
             user_sentiment,
-            feedback_for_request_type.get(DEFAULT_SENTIMENT_RESPONSE, ""),
+            feedback_for_request_type.get(DEFAULT_SENTIMENT_RESPONSE),
         )
-        return str(feedback_message)
-    else:
-        return str(feedback_for_request_type)
+    return feedback_message
 
 
 class VoiceAssistant:
@@ -250,13 +246,13 @@ class VoiceAssistant:
             return "picture"
         # Add more categories as necessary
         else:
-            return "general"
+            return ""
 
     def detect_sentiment(self, user_input: str) -> Sentiment:
         """Detect the sentiment of the user's input using Marvin."""
         return marvin.classify(user_input, Sentiment)
 
-    def _generate_response(self, user_input: str) -> str:
+    async def _generate_response(self, user_input: str) -> str:
         """Generate a GPT response to the user's text input."""
         try:
             # Detect the sentiment of the user's current input
@@ -264,15 +260,15 @@ class VoiceAssistant:
             # Get the user's request type from the current input
             user_request_type = self.categorize_user_request(user_input)
 
-            # Get the GPT response
-            gpt_response = self.chatbot.say_async(user_input)
-
-            # Append feedback inquiry if not already present in the GPT response
-            feedback_inquiry = get_feedback_inquiry(
-                user_request_type, self.last_sentiment
-            )
-            if not is_feedback_inquiry_present(gpt_response):
-                gpt_response += " " + feedback_inquiry
+            run_result = await self.chatbot.say_async(user_input)
+            gpt_response = run_result.messages[0].content[0].text.value
+            # Append feedback inquiry if not already present in the GPT response if user has a request type
+            if user_request_type:
+                feedback_inquiry = get_feedback_inquiry(
+                    user_request_type, self.last_sentiment
+                )
+                if not is_feedback_inquiry_present(gpt_response):
+                    gpt_response += " " + feedback_inquiry
 
             # Update the conversation history with the user's input and the GPT response
             self.conversation_history.append({"role": "user", "content": user_input})
@@ -280,6 +276,8 @@ class VoiceAssistant:
 
             # Update self.last_sentiment to the current sentiment for use in the next interaction
             self.last_sentiment = current_sentiment
+
+            print("Consversation History: ", self.conversation_history)
 
             return gpt_response
         except Exception as e:
@@ -311,7 +309,7 @@ class VoiceAssistant:
                 "Method failed with status code " + str(ex.code) + ": " + ex.message
             )
 
-    def start_session(self):
+    async def start_session(self):
         """Handle the conversation with the user."""
         # Start the session by speaking a greeting
         self._speak("Hello! Chat with GPT and I will speak its responses!")
@@ -327,7 +325,7 @@ class VoiceAssistant:
                     self._speak("Goodbye!")
                     break
                 # Generate a GPT response for the user's input
-                gpt_response_msg = self._generate_response(user_speech_text)
+                gpt_response_msg = await self._generate_response(user_speech_text)
                 logging.info(f"GPT Response Message: {gpt_response_msg} \n")
                 # Speak the GPT response
                 self._speak(gpt_response_msg)
