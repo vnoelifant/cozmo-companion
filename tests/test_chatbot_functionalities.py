@@ -1,5 +1,5 @@
 import pytest
-from mockito import when, unstub, verify
+from mockito import when
 
 from cozmo_companion.assistant import (
     VoiceAssistant,
@@ -171,57 +171,54 @@ class TestIntegrationScenarios:
             feedback_present == expected
         ), "Feedback inquiry presence should match the expected outcome."
 
-    def test_sentiment_and_response_flow(self, voice_assistant_with_mocked_io):
-        """
-        Tests the Voice Assistant's response logic using actual implementations of sentiment detection,
-        feedback inquiry generation, and feedback presence checking,
-        with mocked I/O (text-to-speech and speech-to-text) to simulate user interaction.
-        """
-        # First interaction where the user expresses sadness
-        user_input1 = (
-            voice_assistant_with_mocked_io._listen()
-        )  # Should return "I feel sad"
-        sentiment1 = voice_assistant_with_mocked_io.detect_sentiment(user_input1)
+    @pytest.mark.asyncio
+    async def test_user_interaction_flow_with_sentiment_context(
+        self, configured_assistant
+    ):
+        """Test the interaction flow where user sentiment influences subsequent responses."""
+        # Simulate user expressing sadness
+        user_input_sad = "I am feeling very sad today."
+        sentiment_sad = configured_assistant.detect_sentiment(user_input_sad)
+        response_sad = await configured_assistant._generate_response(user_input_sad)
+
+        # Ensure the sentiment is detected correctly and response is generated
         assert (
-            sentiment1 == Sentiment.NEGATIVE
-        ), "Sentiment detection failed; expected NEGATIVE."
-        voice_assistant_with_mocked_io.last_sentiment = sentiment1
+            sentiment_sad == Sentiment.NEGATIVE
+        ), "The detected sentiment should be NEGATIVE."
+        assert (
+            response_sad is not None
+        ), "The assistant should provide a response to sadness."
 
-        response1 = voice_assistant_with_mocked_io._generate_response(user_input1)
-        print("GPT RESPONSE: ", response1)
-        voice_assistant_with_mocked_io._speak(response1)
+        # Ensure sentiment is stored for subsequent use
+        assert (
+            configured_assistant.last_sentiment == Sentiment.NEGATIVE
+        ), "The assistant should store the last sentiment."
 
-        # Second interaction where the user asks for a joke
-        user_input2 = (
-            voice_assistant_with_mocked_io._listen()
-        )  # Should return "Tell me a joke"
-        user_request_type = voice_assistant_with_mocked_io.categorize_user_request(
-            user_input2
+        # Simulate user asking for a joke after expressing sadness
+        user_input_joke = "Can you tell me a joke?"
+        user_request_type = configured_assistant.categorize_user_request(
+            user_input_joke
         )
+        response_joke = await configured_assistant._generate_response(user_input_joke)
+
+        # Ensure the joke request is categorized correctly
         assert (
             user_request_type == "joke"
-        ), "Request categorization failed; expected 'joke'."
+        ), "The user request should be categorized as 'joke'."
 
-        response2 = voice_assistant_with_mocked_io._generate_response(user_input2)
-        voice_assistant_with_mocked_io._speak(response2)
-
-        # Validate that feedback inquiry is included correctly based on the sentiment
-        feedback_inquiry = get_feedback_inquiry(
-            user_request_type, voice_assistant_with_mocked_io.last_sentiment
-        )
-        feedback_present = is_feedback_inquiry_present(response2)
+        # Verify the joke response is influenced by the previous sad sentiment
+        feedback_inquiry = "Did that joke help cheer you up a bit?"
         assert (
-            not feedback_present
-        ), "Feedback should not have been present initially in the generated response."
+            feedback_inquiry in response_joke
+        ), "The response to the joke should be influenced by the previous sad sentiment."
+
+        # Validate the full conversation for accuracy
+        expected_history = [
+            {"role": "user", "content": user_input_sad},
+            {"role": "gpt", "content": response_sad},
+            {"role": "user", "content": user_input_joke},
+            {"role": "gpt", "content": response_joke},
+        ]
         assert (
-            feedback_inquiry in response2
-        ), "Feedback inquiry should be included in the response based on the previous NEGATIVE sentiment."
-
-        # Ensure that the speak method was invoked with the expected responses
-        verify(voice_assistant_with_mocked_io)._speak(response1)
-        verify(voice_assistant_with_mocked_io)._speak(response2)
-        # Ensure that the listen method was invoked correctly
-        verify(voice_assistant_with_mocked_io, times=2)._listen()
-
-        # Clean up mocks
-        unstub()
+            configured_assistant.conversation_history == expected_history
+        ), "The conversation history should correctly reflect the interaction sequence."

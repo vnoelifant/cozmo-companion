@@ -261,14 +261,20 @@ class VoiceAssistant:
             user_request_type = self.categorize_user_request(user_input)
 
             run_result = await self.chatbot.say_async(user_input)
-            gpt_response = run_result.messages[0].content[0].text.value
+            # import pdb; pdb.set_trace()
+            gpt_response = run_result.messages[-1].content[0].text.value
+            # Add a debug statement to ensure gpt_response is a string
+            if not isinstance(gpt_response, str):
+                raise TypeError(
+                    f"Expected gpt_response to be a str, got {type(gpt_response)} instead"
+                )
             # Append feedback inquiry if not already present in the GPT response if user has a request type
             if user_request_type:
                 feedback_inquiry = get_feedback_inquiry(
                     user_request_type, self.last_sentiment
                 )
                 if not is_feedback_inquiry_present(gpt_response):
-                    gpt_response += " " + feedback_inquiry
+                    gpt_response = gpt_response + " " + feedback_inquiry
 
             # Update the conversation history with the user's input and the GPT response
             self.conversation_history.append({"role": "user", "content": user_input})
@@ -277,7 +283,7 @@ class VoiceAssistant:
             # Update self.last_sentiment to the current sentiment for use in the next interaction
             self.last_sentiment = current_sentiment
 
-            print("Consversation History: ", self.conversation_history)
+            print("Conversation History: ", self.conversation_history)
 
             return gpt_response
         except Exception as e:
