@@ -7,7 +7,7 @@ import marvin
 from decouple import config
 from ibm_cloud_sdk_core.authenticators import IAMAuthenticator
 from ibm_watson import ApiException, SpeechToTextV1, TextToSpeechV1
-from marvin.beta import Application
+from marvin.beta.applications import Application
 from pydub import AudioSegment
 from pydub.playback import play
 
@@ -87,28 +87,31 @@ def get_feedback_inquiry(user_request_type: str, user_sentiment: Sentiment) -> s
             Sentiment.POSITIVE: "Did that joke make you smile?",
             Sentiment.NEGATIVE: "Did that joke help cheer you up a bit?",
             Sentiment.NEUTRAL: "What did you think of that joke?",
-            DEFAULT_SENTIMENT_RESPONSE: "How was the joke?",
+            DEFAULT_SENTIMENT_RESPONSE: "How did you like that joke?",
         },
-        "picture": "Did you like the picture I sent?",
+        "picture": {
+            Sentiment.POSITIVE: "Did that picture make you smile?",
+            Sentiment.NEGATIVE: "Did that picture help cheer you up a bit?",
+            Sentiment.NEUTRAL: "What did you think of that picture?",
+            DEFAULT_SENTIMENT_RESPONSE: "How did you like that picture?",
+        },
         "motivational_quote": {
+            Sentiment.POSITIVE: "Did that quote make you smile?",
             Sentiment.NEGATIVE: "Did that quote uplift you?",
-            DEFAULT_SENTIMENT_RESPONSE: "How did you find that quote?",
+            Sentiment.NEUTRAL: "What did you think of that quote?",
+            DEFAULT_SENTIMENT_RESPONSE: "How did you like that quote?",
         },
         DEFAULT_REQUEST_TYPE_RESPONSE: "Was this information helpful to you?",
     }
 
-    feedback_for_request_type = feedback_inquiries.get(
-        user_request_type, feedback_inquiries[DEFAULT_REQUEST_TYPE_RESPONSE]
-    )
+    feedback_for_request_type = feedback_inquiries.get(user_request_type)
 
     if isinstance(feedback_for_request_type, dict):
         feedback_message = feedback_for_request_type.get(
             user_sentiment,
-            feedback_for_request_type.get(DEFAULT_SENTIMENT_RESPONSE, ""),
+            feedback_for_request_type.get(DEFAULT_SENTIMENT_RESPONSE),
         )
-        return str(feedback_message)
-    else:
-        return str(feedback_for_request_type)
+    return feedback_message
 
 
 class VoiceAssistant:
@@ -124,6 +127,7 @@ class VoiceAssistant:
         self._configure_services()
         # Setting up the chatbot with description and tools
         self.chatbot = Application(
+            name="Companion",
             instructions=(
                 "A friendly, supportive chatbot."
                 "It always provides an empathetic response when it detects"
@@ -131,6 +135,7 @@ class VoiceAssistant:
             ),
             tools=[get_feedback_inquiry],
         )
+        self.last_sentiment = Sentiment.NEUTRAL  # Initialize last sentiment as NEUTRAL
         # Initializing conversation history to store user and bot interactions
         self.conversation_history = []
 
@@ -143,11 +148,9 @@ class VoiceAssistant:
         self.TEXT_TO_SPEECH = self._initialize_ibm_service(
             config("IAM_APIKEY_TTS"), config("URL_TTS")
         )
-        # Setting up Marvin settings
-        marvin.settings.openai.api_key = config("MARVIN_OPENAI_API_KEY")
-        marvin.settings.openai.chat.completions.model = config(
-            "MARVIN_CHAT_COMPLETIONS_MODEL"
-        )
+
+        # Configure Marvin settings
+        self._configure_marvin_settings()
 
     def _initialize_ibm_service(self, api_key, url):
         """
@@ -171,6 +174,14 @@ class VoiceAssistant:
             )
         service.set_service_url(url)
         return service
+
+    def _configure_marvin_settings(self):
+        """Configure Marvin settings for the voice assistant."""
+        # Setting up Marvin settings
+        marvin.settings.openai.api_key = config("MARVIN_OPENAI_API_KEY")
+        marvin.settings.openai.chat.completions.model = config(
+            "MARVIN_CHAT_COMPLETIONS_MODEL"
+        )
 
     @staticmethod
     def _create_wav_file(prefix=""):
@@ -225,33 +236,6 @@ class VoiceAssistant:
         except ApiException as ex:
             logging.error(f"Method failed with status code {ex.code}: " f"{ex.message}")
 
-    def construct_gpt_prompt(
-        self,
-        user_input: str,
-        user_sentiment: Sentiment,
-        request_type: str,
-    ) -> str:
-        # Handling negative sentiment
-        if user_sentiment == Sentiment.NEGATIVE:
-            logging.info("Negative Sentiment Detected...")
-            if request_type == "joke":
-                prompt = user_input + " Requesting an uplifting joke."
-            elif request_type == "motivational_quote":
-                prompt = user_input + " Requesting an inspiring quote."
-            else:
-                prompt = (
-                    user_input + " Requesting an uplifting response."
-                )  # Fallback for negative sentiment
-        # Handling positive sentiment
-        elif user_sentiment == Sentiment.POSITIVE:
-            logging.info("Positive Sentiment Detected...")
-            prompt = user_input  # Use the input as is for positive sentiment
-        # Handling neutral sentiment
-        else:  # Assuming this is Sentiment.NEUTRAL
-            logging.info("Neutral Sentiment Detected...")
-            prompt = user_input  # Standard handling for neutral sentiment
-        return prompt
-
     def categorize_user_request(self, user_input: str) -> str:
         # This function categorizes the user input into different request types.
         if "joke" in user_input.lower():
@@ -262,48 +246,48 @@ class VoiceAssistant:
             return "picture"
         # Add more categories as necessary
         else:
-            return "general"
+            return ""
 
     def detect_sentiment(self, user_input: str) -> Sentiment:
+        """Detect the sentiment of the user's input using Marvin."""
         return marvin.classify(user_input, Sentiment)
 
-    def _generate_response(self, user_input: str) -> str:
+    async def _generate_response(self, user_input: str) -> str:
         """Generate a GPT response to the user's text input."""
         try:
-            # Detect the sentiment of the user's text
-            user_sentiment = self.detect_sentiment(user_input)
-
-            # Get the user request type
+            # Detect the sentiment of the user's current input
+            current_sentiment = self.detect_sentiment(user_input)
+            # Get the user's request type from the current input
             user_request_type = self.categorize_user_request(user_input)
 
-            # Construct the GPT prompt based on the user input, sentiment,
-            # and request type
-            gpt_prompt = self.construct_gpt_prompt(
-                user_input, user_sentiment, user_request_type
-            )
+            run_result = await self.chatbot.say_async(user_input)
+            # import pdb; pdb.set_trace()
+            gpt_response = run_result.messages[-1].content[0].text.value
+            # Add a debug statement to ensure gpt_response is a string
+            if not isinstance(gpt_response, str):
+                raise TypeError(
+                    f"Expected gpt_response to be a str, got {type(gpt_response)} instead"
+                )
+            # Append feedback inquiry if not already present in the GPT response if user has a request type
+            if user_request_type:
+                feedback_inquiry = get_feedback_inquiry(
+                    user_request_type, self.last_sentiment
+                )
+                if not is_feedback_inquiry_present(gpt_response):
+                    gpt_response = gpt_response + " " + feedback_inquiry
 
-            # Update the conversation history with the user's input
-            self.conversation_history.append({"role": "user", "content": gpt_prompt})
-
-            # Get the chatbot's response content
-            gpt_response = self.chatbot(gpt_prompt).content
-
-            # Generate feedback inquiry message from bot
-            feedback_inquiry = get_feedback_inquiry(user_request_type, user_sentiment)
-
-            # Append feedback inquiry if not already present in bot's response
-            if not is_feedback_inquiry_present(gpt_response):
-                gpt_response += " " + feedback_inquiry
-
-            # Update the conversation history with the chatbot's response
+            # Update the conversation history with the user's input and the GPT response
+            self.conversation_history.append({"role": "user", "content": user_input})
             self.conversation_history.append({"role": "gpt", "content": gpt_response})
 
-            # logging.info the conversation log
-            logging.info(f"Conversation Log: {self.conversation_history}")
+            # Update self.last_sentiment to the current sentiment for use in the next interaction
+            self.last_sentiment = current_sentiment
+
+            print("Conversation History: ", self.conversation_history)
 
             return gpt_response
         except Exception as e:
-            logging.error(f"Error getting GPT completion: {e}", exc_info=True)
+            logging.error(f"Error generating response: {e}", exc_info=True)
             return "I'm sorry, I couldn't process that."
 
     def _speak(self, text):
@@ -331,7 +315,7 @@ class VoiceAssistant:
                 "Method failed with status code " + str(ex.code) + ": " + ex.message
             )
 
-    def start_session(self):
+    async def start_session(self):
         """Handle the conversation with the user."""
         # Start the session by speaking a greeting
         self._speak("Hello! Chat with GPT and I will speak its responses!")
@@ -347,7 +331,7 @@ class VoiceAssistant:
                     self._speak("Goodbye!")
                     break
                 # Generate a GPT response for the user's input
-                gpt_response_msg = self._generate_response(user_speech_text)
+                gpt_response_msg = await self._generate_response(user_speech_text)
                 logging.info(f"GPT Response Message: {gpt_response_msg} \n")
                 # Speak the GPT response
                 self._speak(gpt_response_msg)
