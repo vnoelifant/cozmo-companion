@@ -4,6 +4,7 @@ from mockito import when
 from cozmo_companion.assistant import (
     VoiceAssistant,
     Sentiment,
+    RequestType,
     get_feedback_inquiry,
     is_feedback_inquiry_present,
 )
@@ -97,23 +98,6 @@ class TestBasicFunctionality:
             result == expected_output
         ), f"Expected '{expected_output}', but got '{result}'"
 
-    @pytest.mark.parametrize(
-        "user_input, expected",
-        [
-            ("Can you tell me a joke?", "joke"),
-            ("Can you show me a picture?", "picture"),
-            ("Can you tell me a motivational quote", "motivational_quote"),
-        ],
-    )
-    def test_request_categorization(self, assistant, user_input, expected):
-        """
-        Test the categorization of user requests based on the input text.
-        """
-        request_type = assistant.categorize_user_request(user_input)
-        assert (
-            request_type == expected
-        ), "Request categorization should match the expected outcome."
-
 
 # Test class for integration scenarios
 @pytest.mark.integration
@@ -151,6 +135,24 @@ class TestIntegrationScenarios:
         assert (
             sentiment == expected
         ), f"Detected sentiment does not match expected. Expected {expected}, got {sentiment}"
+
+    @pytest.mark.parametrize(
+        "user_input, expected",
+        [
+            ("Can you tell me a joke?", RequestType.JOKE),
+            ("Can you show me a picture?", RequestType.PICTURE),
+            ("Can you tell me a motivational quote", RequestType.MOTIVATIONAL_QUOTE),
+        ],
+    )
+    def test_classify_user_request(self, configured_assistant, user_input, expected):
+        """
+        Tests verification of user request classification based on user input.
+        """
+        user_input_lower = user_input.lower()
+        user_request = configured_assistant.classify_user_request(user_input_lower)
+        assert (
+            user_request == expected
+        ), f"User request type does not match expected. Expected {expected}, got {user_request}"
 
     @pytest.mark.parametrize(
         "bot_text, expected",

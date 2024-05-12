@@ -2,8 +2,10 @@ import logging
 import os
 from datetime import datetime
 from enum import Enum
+from typing import Optional
 
 import marvin
+import webbrowser
 from decouple import config
 from ibm_cloud_sdk_core.authenticators import IAMAuthenticator
 from ibm_watson import ApiException, SpeechToTextV1, TextToSpeechV1
@@ -32,6 +34,12 @@ AUDIO_FORMAT = config("AUDIO_FORMAT", default="audio/wav")
 # Dialogue Constants
 DEFAULT_SENTIMENT_RESPONSE = "default_sentiment_response"
 DEFAULT_REQUEST_TYPE_RESPONSE = "default_request_type_response"
+
+
+def send_picture_to_user(user_input: str) -> None:
+    image = marvin.paint(user_input)
+    url = image.data[0].url
+    webbrowser.open(url)
 
 
 @marvin.fn
@@ -70,7 +78,17 @@ class Sentiment(Enum):
     NEUTRAL = "NEUTRAL"
 
 
-def get_feedback_inquiry(user_request_type: str, user_sentiment: Sentiment) -> str:
+class RequestType(Enum):
+    """Classifies user requests"""
+
+    JOKE = "joke"
+    MOTIVATIONAL_QUOTE = "motivational quote"
+    PICTURE = "picture"
+
+
+def get_feedback_inquiry(
+    user_request_type: RequestType, user_sentiment: Sentiment
+) -> str:
     """
     Generates a feedback inquiry based on the user's request type and sentiment.
 
@@ -83,19 +101,19 @@ def get_feedback_inquiry(user_request_type: str, user_sentiment: Sentiment) -> s
         sentiment.
     """
     feedback_inquiries = {
-        "joke": {
+        RequestType.JOKE: {
             Sentiment.POSITIVE: "Did that joke make you smile?",
             Sentiment.NEGATIVE: "Did that joke help cheer you up a bit?",
             Sentiment.NEUTRAL: "What did you think of that joke?",
             DEFAULT_SENTIMENT_RESPONSE: "How did you like that joke?",
         },
-        "picture": {
+        RequestType.PICTURE: {
             Sentiment.POSITIVE: "Did that picture make you smile?",
             Sentiment.NEGATIVE: "Did that picture help cheer you up a bit?",
             Sentiment.NEUTRAL: "What did you think of that picture?",
             DEFAULT_SENTIMENT_RESPONSE: "How did you like that picture?",
         },
-        "motivational_quote": {
+        RequestType.MOTIVATIONAL_QUOTE: {
             Sentiment.POSITIVE: "Did that quote make you smile?",
             Sentiment.NEGATIVE: "Did that quote uplift you?",
             Sentiment.NEUTRAL: "What did you think of that quote?",
@@ -104,14 +122,18 @@ def get_feedback_inquiry(user_request_type: str, user_sentiment: Sentiment) -> s
         DEFAULT_REQUEST_TYPE_RESPONSE: "Was this information helpful to you?",
     }
 
-    feedback_for_request_type = feedback_inquiries.get(user_request_type)
+    feedback_for_request_type = feedback_inquiries.get(
+        user_request_type, feedback_inquiries[DEFAULT_REQUEST_TYPE_RESPONSE]
+    )
 
     if isinstance(feedback_for_request_type, dict):
         feedback_message = feedback_for_request_type.get(
             user_sentiment,
-            feedback_for_request_type.get(DEFAULT_SENTIMENT_RESPONSE),
+            feedback_for_request_type.get(DEFAULT_SENTIMENT_RESPONSE, ""),
         )
-    return feedback_message
+        return str(feedback_message)
+    else:
+        return str(feedback_for_request_type)
 
 
 class VoiceAssistant:
@@ -236,30 +258,42 @@ class VoiceAssistant:
         except ApiException as ex:
             logging.error(f"Method failed with status code {ex.code}: " f"{ex.message}")
 
-    def categorize_user_request(self, user_input: str) -> str:
-        # This function categorizes the user input into different request types.
-        if "joke" in user_input.lower():
-            return "joke"
-        elif "motivational quote" in user_input.lower():
-            return "motivational_quote"
-        elif "picture" in user_input.lower():
-            return "picture"
-        # Add more categories as necessary
-        else:
-            return ""
-
     def detect_sentiment(self, user_input: str) -> Sentiment:
         """Detect the sentiment of the user's input using Marvin."""
         return marvin.classify(user_input, Sentiment)
 
+    def classify_user_request(self, user_input: str) -> Optional[RequestType]:
+        """
+        Classify the user request type using Marvin.
+
+        Args:
+            user_input (str): The text input from the user.
+
+        Returns:
+            Optional[RequestType]: The classified request type or None if no match is found.
+        """
+        try:
+            # Iterate over all request types to check if any is present in the user input
+            for request_type in RequestType:
+                if request_type.value in user_input:
+                    # If a request type is found, classify the user input using Marvin
+                    return marvin.classify(user_input, RequestType)
+            # If no request types are found in the user input, return None
+            return None
+        except Exception as e:
+            # Log the exception if something goes wrong with classification
+            logging.error(f"Failed to classify user request: {e}")
+            return None
+
     async def _generate_response(self, user_input: str) -> str:
         """Generate a GPT response to the user's text input."""
         try:
+            user_input = user_input.lower()
             # Detect the sentiment of the user's current input
             current_sentiment = self.detect_sentiment(user_input)
-            # Get the user's request type from the current input
-            user_request_type = self.categorize_user_request(user_input)
-
+            # Classify the user's request type based on the entire input
+            user_request_type = self.classify_user_request(user_input)
+            # Generate a GPT response based on the user's input
             run_result = await self.chatbot.say_async(user_input)
             # import pdb; pdb.set_trace()
             gpt_response = run_result.messages[-1].content[0].text.value
@@ -268,11 +302,16 @@ class VoiceAssistant:
                 raise TypeError(
                     f"Expected gpt_response to be a str, got {type(gpt_response)} instead"
                 )
-            # Append feedback inquiry if not already present in the GPT response if user has a request type
+            # Check if the user's request type is not None
             if user_request_type:
+                # Send a picture to the user if the request type is PICTURE
+                if user_request_type == RequestType.PICTURE:
+                    send_picture_to_user(user_input)
+                # Get bot feedback inquiry based on the user's request type and sentiment
                 feedback_inquiry = get_feedback_inquiry(
                     user_request_type, self.last_sentiment
                 )
+                # Append feedback inquiry if not already present in the GPT response
                 if not is_feedback_inquiry_present(gpt_response):
                     gpt_response = gpt_response + " " + feedback_inquiry
 
