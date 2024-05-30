@@ -2,7 +2,7 @@ import logging
 import os
 from datetime import datetime
 from enum import Enum
-from typing import Optional
+from pydantic import BaseModel
 
 import marvin
 import webbrowser
@@ -37,103 +37,24 @@ DEFAULT_REQUEST_TYPE_RESPONSE = "default_request_type_response"
 
 
 def send_picture_to_user(user_input: str) -> None:
+    """Send a picture to the user based on the user's input."""
     image = marvin.paint(user_input)
     url = image.data[0].url
     webbrowser.open(url)
 
 
-@marvin.fn
-def is_feedback_inquiry_present(bot_text: str) -> bool:
-    """
-    Analyzes the bot's response {{ bot_text }} to determine if it contains a feedback inquiry.
-
-    The function leverages natural language understanding to interpret the text and
-    identify feedback-related phrases, taking into account the context and subtleties
-    of the conversation. It examines the text of a chatbot's response to detect if
-    it includes phrases or questions that are seeking feedback from the user. Common
-    examples of feedback inquiries might include direct questions like "Did that help
-    you?" or "Do you want to know more?" as well as subtle cues such as the presence
-    of a question mark (?) at the end of a statement.
-
-    Args:
-        bot_text: The text of the response provided by the chatbot. This can range
-        from answers and statements to jokes or informational content.
-
-    Returns:
-        bool: Indicates whether the bot's response includes a feedback inquiry.
-            - True: If phrases or questions seeking feedback are found, indicating
-                an active attempt by the bot to engage with the user or confirm
-                understanding.
-            - False: If no feedback-seeking phrases or questions are detected,
-                suggesting a straightforward response without solicitation for feedback.
-    """
-    return False  # Dummy return value for type checking
-
-
 class Sentiment(Enum):
-    """Classifies user text"""
+    """Classifies the sentiment of the user's input."""
 
     POSITIVE = "POSITIVE"
     NEGATIVE = "NEGATIVE"
     NEUTRAL = "NEUTRAL"
 
 
-class RequestType(Enum):
-    """Classifies user requests"""
+class SentimentState(BaseModel):
+    """Represents the state of the user's sentiment."""
 
-    JOKE = "joke"
-    MOTIVATIONAL_QUOTE = "motivational quote"
-    PICTURE = "picture"
-
-
-def get_feedback_inquiry(
-    user_request_type: RequestType, user_sentiment: Sentiment
-) -> str:
-    """
-    Generates a feedback inquiry based on the user's request type and sentiment.
-
-    Args:
-        user_request_type: A string categorizing the type of the user's request.
-        user_sentiment: An enum value representing the sentiment of the user's request.
-
-    Returns:
-        str: A tailored feedback inquiry message based on the request type and
-        sentiment.
-    """
-    feedback_inquiries = {
-        RequestType.JOKE: {
-            Sentiment.POSITIVE: "Did that joke make you smile?",
-            Sentiment.NEGATIVE: "Did that joke help cheer you up a bit?",
-            Sentiment.NEUTRAL: "What did you think of that joke?",
-            DEFAULT_SENTIMENT_RESPONSE: "How did you like that joke?",
-        },
-        RequestType.PICTURE: {
-            Sentiment.POSITIVE: "Did that picture make you smile?",
-            Sentiment.NEGATIVE: "Did that picture help cheer you up a bit?",
-            Sentiment.NEUTRAL: "What did you think of that picture?",
-            DEFAULT_SENTIMENT_RESPONSE: "How did you like that picture?",
-        },
-        RequestType.MOTIVATIONAL_QUOTE: {
-            Sentiment.POSITIVE: "Did that quote make you smile?",
-            Sentiment.NEGATIVE: "Did that quote uplift you?",
-            Sentiment.NEUTRAL: "What did you think of that quote?",
-            DEFAULT_SENTIMENT_RESPONSE: "How did you like that quote?",
-        },
-        DEFAULT_REQUEST_TYPE_RESPONSE: "Was this information helpful to you?",
-    }
-
-    feedback_for_request_type = feedback_inquiries.get(
-        user_request_type, feedback_inquiries[DEFAULT_REQUEST_TYPE_RESPONSE]
-    )
-
-    if isinstance(feedback_for_request_type, dict):
-        feedback_message = feedback_for_request_type.get(
-            user_sentiment,
-            feedback_for_request_type.get(DEFAULT_SENTIMENT_RESPONSE, ""),
-        )
-        return str(feedback_message)
-    else:
-        return str(feedback_for_request_type)
+    sentiment: list[Sentiment] = []
 
 
 class VoiceAssistant:
@@ -150,16 +71,33 @@ class VoiceAssistant:
         # Setting up the chatbot with description and tools
         self.chatbot = Application(
             name="Companion",
-            instructions=(
-                "A friendly, supportive chatbot."
-                "It always provides an empathetic response when it detects"
-                "negative sentiment."
-            ),
-            tools=[get_feedback_inquiry],
+            model=config("MARVIN_CHAT_COMPLETIONS_MODEL"),
+            instructions="""A friendly, supportive chatbot.It always provides an
+                empathetic response when it detects negative sentiment. In
+                addition, you have a crucial goal to keep track of the user's
+                sentiment state, especially negative sentiment, to provide more
+                emotionally and contextually aware responses. As an example,
+                the user may have specific requests during an interaction after
+                expressing negative sentiment. For instance, if the last sentiment
+                from the user was negative, and the user asks for a joke, motivational
+                quote, or picture in the next interaction, the chatbot should provide
+                a feedback inquiry based on the user's request type, checking if the
+                joke, quote or picture helped cheer the user up. Note that if the user
+                asks for a picture, you will need to use the tool 'send_picture_to_user'
+                to send a picture. Another scenario could be that you notice that the
+                sentiment transitions from negative to positive, and in this case, you
+                should be especially happy and excited for the user, and include these
+                emotions in your responses.
+                """,
+            state=SentimentState(),
+            tools=[send_picture_to_user],
         )
-        self.last_sentiment = Sentiment.NEUTRAL  # Initialize last sentiment as NEUTRAL
+        # self.last_sentiment = Sentiment.NEUTRAL  # Initialize last sentiment as NEUTRAL
         # Initializing conversation history to store user and bot interactions
         self.conversation_history = []
+
+    def __str__(self) -> str:
+        return f"The state of the assistant is {self.chatbot.state}"
 
     def _configure_services(self):
         """Configure and initialize external services (IBM, Marvin, etc.)."""
@@ -258,77 +196,6 @@ class VoiceAssistant:
         except ApiException as ex:
             logging.error(f"Method failed with status code {ex.code}: " f"{ex.message}")
 
-    def detect_sentiment(self, user_input: str) -> Sentiment:
-        """Detect the sentiment of the user's input using Marvin."""
-        return marvin.classify(user_input, Sentiment)
-
-    def classify_user_request(self, user_input: str) -> Optional[RequestType]:
-        """
-        Classify the user request type using Marvin.
-
-        Args:
-            user_input (str): The text input from the user.
-
-        Returns:
-            Optional[RequestType]: The classified request type or None if no match is found.
-        """
-        try:
-            # Iterate over all request types to check if any is present in the user input
-            for request_type in RequestType:
-                if request_type.value in user_input:
-                    # If a request type is found, classify the user input using Marvin
-                    return marvin.classify(user_input, RequestType)
-            # If no request types are found in the user input, return None
-            return None
-        except Exception as e:
-            # Log the exception if something goes wrong with classification
-            logging.error(f"Failed to classify user request: {e}")
-            return None
-
-    async def _generate_response(self, user_input: str) -> str:
-        """Generate a GPT response to the user's text input."""
-        try:
-            user_input = user_input.lower()
-            # Detect the sentiment of the user's current input
-            current_sentiment = self.detect_sentiment(user_input)
-            # Classify the user's request type based on the entire input
-            user_request_type = self.classify_user_request(user_input)
-            # Generate a GPT response based on the user's input
-            run_result = await self.chatbot.say_async(user_input)
-            # import pdb; pdb.set_trace()
-            gpt_response = run_result.messages[-1].content[0].text.value
-            # Add a debug statement to ensure gpt_response is a string
-            if not isinstance(gpt_response, str):
-                raise TypeError(
-                    f"Expected gpt_response to be a str, got {type(gpt_response)} instead"
-                )
-            # Check if the user's request type is not None
-            if user_request_type:
-                # Send a picture to the user if the request type is PICTURE
-                if user_request_type == RequestType.PICTURE:
-                    send_picture_to_user(user_input)
-                # Get bot feedback inquiry based on the user's request type and sentiment
-                feedback_inquiry = get_feedback_inquiry(
-                    user_request_type, self.last_sentiment
-                )
-                # Append feedback inquiry if not already present in the GPT response
-                if not is_feedback_inquiry_present(gpt_response):
-                    gpt_response = gpt_response + " " + feedback_inquiry
-
-            # Update the conversation history with the user's input and the GPT response
-            self.conversation_history.append({"role": "user", "content": user_input})
-            self.conversation_history.append({"role": "gpt", "content": gpt_response})
-
-            # Update self.last_sentiment to the current sentiment for use in the next interaction
-            self.last_sentiment = current_sentiment
-
-            print("Conversation History: ", self.conversation_history)
-
-            return gpt_response
-        except Exception as e:
-            logging.error(f"Error generating response: {e}", exc_info=True)
-            return "I'm sorry, I couldn't process that."
-
     def _speak(self, text):
         """Convert text input to speech."""
         # Create a WAV file to store the bot's speech
@@ -360,20 +227,38 @@ class VoiceAssistant:
         self._speak("Hello! Chat with GPT and I will speak its responses!")
         while True:
             # Listen to the user's speech and transcribe it
-            user_speech_text = self._listen()
-            logging.info(f"User Speech Text: {user_speech_text} \n")
+            user_input = self._listen()
+            logging.info(f"User Speech Text: {user_input} \n")
 
             # Check if user_speech_text is not None
-            if user_speech_text:
+            if user_input:
+                user_input = user_input.lower()
                 # Exit the loop if the user says "exit"
-                if "exit" in user_speech_text.strip().lower():
+                if "exit" in user_input.strip().lower():
                     self._speak("Goodbye!")
                     break
-                # Generate a GPT response for the user's input
-                gpt_response_msg = await self._generate_response(user_speech_text)
-                logging.info(f"GPT Response Message: {gpt_response_msg} \n")
-                # Speak the GPT response
-                self._speak(gpt_response_msg)
+                # Process the input through Marvin
+                try:
+                    # Generate a GPT response based on the user's input
+                    gpt_response = await self.chatbot.say_async(user_input)
+                    # Extract the text from the GPT response
+                    gpt_response_text = gpt_response.messages[-1].content[0].text.value
+                    logging.info(f"GPT Response Message: {gpt_response} \n")  #
+                    # Speak the GPT response
+                    self._speak(gpt_response_text)
+                    # Update the conversation history with the user's input and the GPT response
+                    self.conversation_history.append(
+                        {"role": "user", "content": user_input}
+                    )
+                    self.conversation_history.append(
+                        {"role": "gpt", "content": gpt_response}
+                    )
+                    print("Chatbot object: ", self.chatbot)
+                except Exception as e:
+                    logging.error(f"Failed to process input through Marvin: {e}")
+                    self._speak(
+                        "Sorry, I encountered an error processing your request."
+                    )
             else:
                 # If user_speech_text is None, handle the case appropriately
                 logging.info("No valid input received. Please try speaking again.")
