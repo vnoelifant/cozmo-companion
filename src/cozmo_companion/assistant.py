@@ -253,7 +253,7 @@ class VoiceAssistant:
                     self.conversation_history.append(
                         {"role": "gpt", "content": gpt_response}
                     )
-                    print("Chatbot object: ", self.chatbot)
+                    # print("Chatbot object: ", self.chatbot)
                 except Exception as e:
                     logging.error(f"Failed to process input through Marvin: {e}")
                     self._speak(
