@@ -12,10 +12,9 @@ from ibm_watson import ApiException, SpeechToTextV1, TextToSpeechV1
 from marvin.beta.applications import Application
 from pydub import AudioSegment
 from pydub.playback import play
+from .logging_config import setup_logging
 
 from .recorder import Recorder
-
-logging.basicConfig(level=logging.INFO)
 
 # Watson Speech to Text Configuration
 CONTENT_TYPE = config("CONTENT_TYPE", default="audio/wav")
@@ -57,6 +56,20 @@ class SentimentState(BaseModel):
     sentiment: list[Sentiment] = []
 
 
+@marvin.fn  # type: ignore
+def check_exit_command(user_input: str) -> bool:
+    """
+    Analyzes the user's input to determine if it indicates a desire to end the session.
+    This function detects standard exit phrases like 'exit', 'quit', 'goodbye', or 'stop'.
+
+    Args:
+        user_input (str): The text input from the user.
+
+    Returns:
+        bool: Returns True if an exit command is detected, otherwise False.
+    """
+
+
 class VoiceAssistant:
 
     """
@@ -67,8 +80,12 @@ class VoiceAssistant:
 
     def __init__(self):
         """Initialize the VoiceAssistant and its services."""
+        # Setup logging
+        setup_logging(log_file="logs/chatbot_log.txt")
+
+        # Configure and initialize external services (IBM, Marvin, etc.)
         self._configure_services()
-        # Setting up the chatbot with description and tools
+        # Setting up the chatbot with instructions, state, and tools.
         self.chatbot = Application(
             name="Companion",
             model=config("MARVIN_CHAT_COMPLETIONS_MODEL"),
@@ -97,7 +114,26 @@ class VoiceAssistant:
         self.conversation_history = []
 
     def __str__(self) -> str:
-        return f"The state of the assistant is {self.chatbot.state}"
+        """Return a string representation of the VoiceAssistant object."""
+        return (
+            f"Chatbot Object:\n"
+            f"ID: {self.chatbot.id}\n"
+            f"Name: {self.chatbot.name}\n"
+            f"Model: {self.chatbot.model}\n"
+            f"Instructions: {self.chatbot.instructions[:100]}... (truncated)\n"  # Shorten for readability
+            f"Tools: {self.chatbot.tools}\n"
+            f"State: {self.chatbot.state}\n"
+        )
+
+    def log_chatbot_details(self):
+        """Logs the chatbot object and conversation history."""
+        # Log chatbot details
+        logging.info(str(self))
+
+        # Log conversation history
+        logging.info("Conversation History:")
+        for entry in self.conversation_history:
+            logging.info(f"{entry['role']}: {entry['content']}")
 
     def _configure_services(self):
         """Configure and initialize external services (IBM, Marvin, etc.)."""
@@ -196,6 +232,10 @@ class VoiceAssistant:
         except ApiException as ex:
             logging.error(f"Method failed with status code {ex.code}: " f"{ex.message}")
 
+    def detect_sentiment(self, user_input: str) -> Sentiment:
+        """Detect the sentiment of the user's input using Marvin."""
+        return marvin.classify(user_input, Sentiment)
+
     def _speak(self, text):
         """Convert text input to speech."""
         # Create a WAV file to store the bot's speech
@@ -234,16 +274,19 @@ class VoiceAssistant:
             if user_input:
                 user_input = user_input.lower()
                 # Exit the loop if the user says "exit"
-                if "exit" in user_input.strip().lower():
+                if check_exit_command(user_input):
                     self._speak("Goodbye!")
                     break
                 # Process the input through Marvin
                 try:
+                    # detect user sentiment
+                    self.detect_sentiment(user_input)
+
                     # Generate a GPT response based on the user's input
                     gpt_response = await self.chatbot.say_async(user_input)
                     # Extract the text from the GPT response
                     gpt_response_text = gpt_response.messages[-1].content[0].text.value
-                    logging.info(f"GPT Response Message: {gpt_response} \n")  #
+                    logging.info(f"GPT Response Message: {gpt_response_text} \n")  #
                     # Speak the GPT response
                     self._speak(gpt_response_text)
                     # Update the conversation history with the user's input and the GPT response
@@ -251,9 +294,8 @@ class VoiceAssistant:
                         {"role": "user", "content": user_input}
                     )
                     self.conversation_history.append(
-                        {"role": "gpt", "content": gpt_response}
+                        {"role": "gpt", "content": gpt_response_text}
                     )
-                    # print("Chatbot object: ", self.chatbot)
                 except Exception as e:
                     logging.error(f"Failed to process input through Marvin: {e}")
                     self._speak(
@@ -263,3 +305,6 @@ class VoiceAssistant:
                 # If user_speech_text is None, handle the case appropriately
                 logging.info("No valid input received. Please try speaking again.")
                 self._speak("I didn't catch that, could you please repeat?")
+
+        # Log the chatbot details and conversation history at the end of the session
+        self.log_chatbot_details()

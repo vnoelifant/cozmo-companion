@@ -1,0 +1,85 @@
+2024-09-14 23:23:19,414 - INFO - Logging setup complete.
+2024-09-14 23:23:29,502 - INFO - Starting recording process
+2024-09-14 23:23:29,502 - INFO - Please say something to the microphone
+
+2024-09-14 23:23:34,852 - INFO - Transcribing audio....
+
+2024-09-14 23:23:39,349 - INFO - User Speech Text: I feel terrible
+
+2024-09-14 23:23:41,555 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2024-09-14 23:23:43,200 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2024-09-14 23:23:44,495 - INFO - HTTP Request: POST https://api.openai.com/v1/threads "HTTP/1.1 200 OK"
+2024-09-14 23:23:44,652 - INFO - HTTP Request: POST https://api.openai.com/v1/threads/thread_ORc7ABR7a9J0dWdLK1NBrsHZ/messages "HTTP/1.1 200 OK"
+2024-09-14 23:23:46,332 - INFO - HTTP Request: POST https://api.openai.com/v1/assistants "HTTP/1.1 200 OK"
+2024-09-14 23:23:47,216 - INFO - HTTP Request: POST https://api.openai.com/v1/threads/thread_ORc7ABR7a9J0dWdLK1NBrsHZ/runs "HTTP/1.1 200 OK"
+2024-09-14 23:23:52,712 - INFO - HTTP Request: POST https://api.openai.com/v1/threads/thread_ORc7ABR7a9J0dWdLK1NBrsHZ/runs/run_1pXJUnrpPB80kBMeegpJq4vh/submit_tool_outputs "HTTP/1.1 200 OK"
+2024-09-14 23:23:56,239 - INFO - HTTP Request: DELETE https://api.openai.com/v1/assistants/asst_esiwhnbC0n74NX09ZcvoSdN3 "HTTP/1.1 200 OK"
+2024-09-14 23:23:56,239 - INFO - GPT Response Message: I've noted your sentiment. Would you like to hear a joke, a motivational quote, or see a picture to help lift your spirits? \U0001f31f
+
+2024-09-14 23:24:06,006 - INFO - Starting recording process
+2024-09-14 23:24:06,006 - INFO - Please say something to the microphone
+
+2024-09-14 23:24:11,220 - INFO - Transcribing audio....
+
+2024-09-14 23:24:12,306 - INFO - User Speech Text: can you tell me a joke
+
+2024-09-14 23:24:14,096 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2024-09-14 23:24:15,496 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2024-09-14 23:24:15,767 - INFO - HTTP Request: POST https://api.openai.com/v1/threads/thread_ORc7ABR7a9J0dWdLK1NBrsHZ/messages "HTTP/1.1 200 OK"
+2024-09-14 23:24:17,275 - INFO - HTTP Request: POST https://api.openai.com/v1/assistants "HTTP/1.1 200 OK"
+2024-09-14 23:24:17,791 - INFO - HTTP Request: POST https://api.openai.com/v1/threads/thread_ORc7ABR7a9J0dWdLK1NBrsHZ/runs "HTTP/1.1 200 OK"
+2024-09-14 23:24:21,510 - INFO - HTTP Request: DELETE https://api.openai.com/v1/assistants/asst_3Xy2DUX7jYMhBbXz2Bi9NOYO "HTTP/1.1 200 OK"
+2024-09-14 23:24:21,526 - INFO - GPT Response Message: Of course, here’s a light-hearted joke for you:
+
+Why don't scientists trust atoms?
+
+Because they make up everything! \U0001f604
+
+Did that bring a smile to your face?
+
+2024-09-14 23:24:33,528 - INFO - Starting recording process
+2024-09-14 23:24:33,528 - INFO - Please say something to the microphone
+
+2024-09-14 23:24:39,132 - INFO - Transcribing audio....
+
+2024-09-14 23:24:40,186 - INFO - User Speech Text: yes that made me really happy
+
+2024-09-14 23:24:41,890 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2024-09-14 23:24:43,270 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2024-09-14 23:24:43,473 - INFO - HTTP Request: POST https://api.openai.com/v1/threads/thread_ORc7ABR7a9J0dWdLK1NBrsHZ/messages "HTTP/1.1 200 OK"
+2024-09-14 23:24:44,870 - INFO - HTTP Request: POST https://api.openai.com/v1/assistants "HTTP/1.1 200 OK"
+2024-09-14 23:24:45,460 - INFO - HTTP Request: POST https://api.openai.com/v1/threads/thread_ORc7ABR7a9J0dWdLK1NBrsHZ/runs "HTTP/1.1 200 OK"
+2024-09-14 23:24:47,131 - INFO - HTTP Request: POST https://api.openai.com/v1/threads/thread_ORc7ABR7a9J0dWdLK1NBrsHZ/runs/run_X3vETjVXpBjeDM3c82m4umhK/submit_tool_outputs "HTTP/1.1 200 OK"
+2024-09-14 23:24:50,810 - INFO - HTTP Request: DELETE https://api.openai.com/v1/assistants/asst_V9fRaICGDqzVHHH6ETsxnAxJ "HTTP/1.1 200 OK"
+2024-09-14 23:24:50,815 - INFO - GPT Response Message: I'm so glad to hear that! \U0001f60a Your happiness means a lot to me. If there's anything else I can do to keep that smile on your face, just let me know!
+
+2024-09-14 23:25:02,733 - INFO - Starting recording process
+2024-09-14 23:25:02,733 - INFO - Please say something to the microphone
+
+2024-09-14 23:25:07,373 - INFO - Transcribing audio....
+
+2024-09-14 23:25:08,021 - INFO - User Speech Text: exit
+
+2024-09-14 23:25:09,685 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2024-09-14 23:25:11,867 - INFO - Chatbot Object:
+ID: None
+Name: Companion
+Model: gpt-4o
+Instructions: A friendly, supportive chatbot.It always provides an
+                empathetic response when it det... (truncated)
+Tools: [<function send_picture_to_user at 0x000001E97A4CDEE0>]
+State: value=SentimentState(sentiment=[<Sentiment.NEGATIVE: 'NEGATIVE'>, <Sentiment.POSITIVE: 'POSITIVE'>])
+
+2024-09-14 23:25:11,867 - INFO - Conversation History:
+2024-09-14 23:25:11,867 - INFO - user: i feel terrible
+2024-09-14 23:25:11,867 - INFO - gpt: I've noted your sentiment. Would you like to hear a joke, a motivational quote, or see a picture to help lift your spirits? \U0001f31f
+2024-09-14 23:25:11,867 - INFO - user: can you tell me a joke
+2024-09-14 23:25:11,867 - INFO - gpt: Of course, here’s a light-hearted joke for you:
+
+Why don't scientists trust atoms?
+
+Because they make up everything! \U0001f604
+
+Did that bring a smile to your face?
+2024-09-14 23:25:11,867 - INFO - user: yes that made me really happy
+2024-09-14 23:25:11,867 - INFO - gpt: I'm so glad to hear that! \U0001f60a Your happiness means a lot to me. If there's anything else I can do to keep that smile on your face, just let me know!
