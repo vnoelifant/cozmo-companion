@@ -24,12 +24,4 @@ def setup_logging(log_file="logs/chatbot_log.txt"):
         format="%(asctime)s - %(levelname)s - %(message)s",
     )
 
-    # Create a logger for Marvin or third-party libraries
-    marvin_logger = logging.getLogger("marvin")
-    marvin_logger.setLevel(logging.INFO)
-
-    # Ensure Marvin or other third-party logs are captured
-    root_logger = logging.getLogger()  # This is the root logger
-    root_logger.setLevel(logging.INFO)
-
     logging.info("Logging setup complete.")
