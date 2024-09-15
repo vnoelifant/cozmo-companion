@@ -14,8 +14,8 @@ class TestBasicFunctionality:
     @pytest.mark.parametrize(
         "user_input, expected",
         [
-            ("exit", True),
-            ("stop", True),
+            ("i've got to go", True),
+            ("Need to end conversation", True),
             ("goodbye", True),
             ("hello", False),
         ],
