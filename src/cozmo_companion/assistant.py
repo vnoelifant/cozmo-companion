@@ -281,13 +281,15 @@ class VoiceAssistant:
         self.conversation_history.append({"role": "user", "content": user_input})
         logging.info(f"User is exiting the session with input: {user_input}")
 
+        # Chatbot speaks a goodbye message
+        gpt_exit_message = "Alright, I understand. It was great talking to you. I am always here for you if you want to talk. Goodbye!"
+        self._speak(gpt_exit_message)
+
+        # Update conversation history with the bot's exit message
+        self.conversation_history.append({"role": "gpt", "content": gpt_exit_message})
+
         # Log the chatbot details and conversation history before ending the session
         self.log_chatbot_details()
-
-        # Speak a goodbye message
-        self._speak(
-            "Alright, I understand. It was great talking to you. I am always here for you if you want to talk. Goodbye!"
-        )
 
     async def start_session(self):
         """Handle the conversation with the user."""
