@@ -59,14 +59,18 @@ class SentimentState(BaseModel):
 @marvin.fn  # type: ignore
 def check_exit_command(user_input: str) -> bool:
     """
-    Analyzes the user's input to determine if it indicates a desire to end the session.
-    This function detects standard exit phrases like 'exit', 'quit', 'goodbye', or 'stop'.
+    Analyze the user's input to detect intentions to end the conversation.
 
-    Args:
-        user_input (str): The text input from the user.
+    This function checks if the user input contains phrases that imply a desire
+    to end the conversation. Examples of such phrases include 'goodbye', 'exit',
+    'stop', 'see you later', 'talk later', 'thanks', or 'done for today'. The goal
+    is to detect a wide range of possible signals that the user may want to terminate
+    the conversation.
+
+    The input to analyze is: {{ user_input }}.
 
     Returns:
-        bool: Returns True if an exit command is detected, otherwise False.
+        bool: Returns True if an exit-related phrase is detected, otherwise False.
     """
 
 
@@ -89,23 +93,25 @@ class VoiceAssistant:
         self.chatbot = Application(
             name="Companion",
             model=config("MARVIN_CHAT_COMPLETIONS_MODEL"),
-            instructions="""A friendly, supportive chatbot.It always provides an
-                empathetic response when it detects negative sentiment. In
-                addition, you have a crucial goal to keep track of the user's
-                sentiment state, especially negative sentiment, to provide more
-                emotionally and contextually aware responses. As an example,
-                the user may have specific requests during an interaction after
-                expressing negative sentiment. For instance, if the last sentiment
-                from the user was negative, and the user asks for a joke, motivational
-                quote, or picture in the next interaction, the chatbot should provide
-                a feedback inquiry based on the user's request type, checking if the
-                joke, quote or picture helped cheer the user up. Note that if the user
-                asks for a picture, you will need to use the tool 'send_picture_to_user'
-                to send a picture. Another scenario could be that you notice that the
-                sentiment transitions from negative to positive, and in this case, you
-                should be especially happy and excited for the user, and include these
-                emotions in your responses.
-                """,
+            instructions=""" You are Companion, a friendly, supportive, and empathetic chatbot.
+            Your main goal is to track the user's sentiment state, and update the application's
+            state accordingly.You should always provide emotionally aware and context-sensitive
+            responses. If you detect that the user is feeling negative or down, offer a caring
+            and empathetic response that acknowledges their emotions. For example, if the user
+            expresses sadness, frustration, or anxiety, respond with comfort, reassurance, or
+            encouragement. Be attentive to their mood and aim to improve it by asking follow-up
+            questions or suggesting actions. In certain cases, after detecting negative sentiment,
+            the user may make specific requests to improve their mood.  When fulfilling the user's
+            request, always check in to ask whether the action helped improve their mood. For
+            example, if the user asks for a picture, you should use the 'send_picture_to_user' tool to
+            send them a picture and ask if it helped brighten their day. Keep track of any
+            transitions in sentiment. If you notice that the user's mood changes from negative
+            to positive, react with excitement and joy in your responses. Be explicitly happy
+            for them and celebrate their improved mood. For instance, if the user was previously
+            sad and now feels better, express how glad you are to see them feeling happier.
+            Maintain a friendly, conversational tone throughout the interaction. Aim to be a
+            supportive companion, ready to listen, empathize, and respond with both understanding
+            and positivity.""",
             state=SentimentState(),
             tools=[send_picture_to_user],
         )
@@ -261,6 +267,26 @@ class VoiceAssistant:
                 "Method failed with status code " + str(ex.code) + ": " + ex.message
             )
 
+    def terminate_session(self, user_input: str):
+        """
+        Handles session termination, updates conversation history, logs details,
+        and speaks a goodbye message.
+
+        Args:
+            user_input (str): The final input from the user that triggered session termination.
+        """
+        # Update conversation history with the user's exit input
+        self.conversation_history.append({"role": "user", "content": user_input})
+        logging.info(f"User is exiting the session with input: {user_input}")
+
+        # Log the chatbot details and conversation history before ending the session
+        self.log_chatbot_details()
+
+        # Speak a goodbye message
+        self._speak(
+            "Alright, I understand. It was great talking to you. I am always here for you if you want to talk. Goodbye!"
+        )
+
     async def start_session(self):
         """Handle the conversation with the user."""
         # Start the session by speaking a greeting
@@ -275,7 +301,8 @@ class VoiceAssistant:
                 user_input = user_input.lower()
                 # Exit the loop if the user says "exit"
                 if check_exit_command(user_input):
-                    self._speak("Goodbye!")
+                    # Terminate the session if an exit command is detected
+                    self.terminate_session(user_input)
                     break
                 # Process the input through Marvin
                 try:
