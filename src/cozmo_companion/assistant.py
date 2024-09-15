@@ -61,8 +61,8 @@ def check_exit_command(user_input: str) -> bool:
     """
     Analyze the user's input to detect intentions to end the conversation.
 
-    This function checks if the user input contains phrases that imply a desire
-    to end the conversation. Examples of such phrases include 'goodbye', 'exit',
+    This function checks if the `user input` contains phrases that imply a desire
+    to end the conversation. Examples of such phrases include 'got to go', 'goodbye', 'exit',
     'stop', 'see you later', 'talk later', 'thanks', or 'done for today'. The goal
     is to detect a wide range of possible signals that the user may want to terminate
     the conversation.
@@ -93,9 +93,11 @@ class VoiceAssistant:
         self.chatbot = Application(
             name="Companion",
             model=config("MARVIN_CHAT_COMPLETIONS_MODEL"),
-            instructions=""" You are Companion, a friendly, supportive, and empathetic chatbot.
-            Your main goal is to track the user's sentiment state, and update the application's
-            state accordingly.You should always provide emotionally aware and context-sensitive
+            instructions=""" You are a friendly, supportive, and empathetic chatbot companion.
+            You must ensure to track the user's sentiment state, using the values
+            from the `Sentiment` Enum, which includes 'POSITIVE', 'NEGATIVE', and 'NEUTRAL.'
+            You must be sure to update the application's state accordingly with the detected value
+            from the Enum. You should always provide emotionally aware and context-sensitive
             responses. If you detect that the user is feeling negative or down, offer a caring
             and empathetic response that acknowledges their emotions. For example, if the user
             expresses sadness, frustration, or anxiety, respond with comfort, reassurance, or
@@ -103,9 +105,9 @@ class VoiceAssistant:
             questions or suggesting actions. In certain cases, after detecting negative sentiment,
             the user may make specific requests to improve their mood.  When fulfilling the user's
             request, always check in to ask whether the action helped improve their mood. For
-            example, if the user asks for a picture, you should use the 'send_picture_to_user' tool to
+            example, if the user asks for a picture, you should use the `send_picture_to_user` tool to
             send them a picture and ask if it helped brighten their day. Keep track of any
-            transitions in sentiment. If you notice that the user's mood changes from negative
+            transitions in sentiment. If you notice that the user's mocod changes from negative
             to positive, react with excitement and joy in your responses. Be explicitly happy
             for them and celebrate their improved mood. For instance, if the user was previously
             sad and now feels better, express how glad you are to see them feeling happier.
