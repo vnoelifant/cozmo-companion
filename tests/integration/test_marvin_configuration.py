@@ -1,11 +1,10 @@
 import os
 import pytest
-from cozmo_companion.assistant import VoiceAssistant
 import marvin
 
 
 @pytest.mark.integration
-def test_configure_marvin_settings(setup_marvin_env):
+def test_configure_marvin_settings(marvin_assistant):
     """
     Test the _configure_marvin_settings method of the VoiceAssistant class to ensure
     it correctly sets up the Marvin settings based on environment variables.
@@ -16,15 +15,8 @@ def test_configure_marvin_settings(setup_marvin_env):
       specified in the environment variables.
 
     Args:
-        setup_marvin_env (fixture): A pytest fixture that sets up the Marvin environment
-                                    necessary for the test.
+        marvin_assistant (fixture): A pytest fixture that provides a VoiceAssistant instance with Marvin settings configured
     """
-    # Create an instance of VoiceAssistant
-    assistant = VoiceAssistant()
-
-    # Configure Marvin settings using the method under test
-    assistant._configure_marvin_settings()
-
     # Assert that the Marvin OpenAI API key is properly set (not None or empty)
     assert (
         marvin.settings.openai.api_key

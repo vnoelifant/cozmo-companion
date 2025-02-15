@@ -12,10 +12,9 @@ from ibm_watson import ApiException, SpeechToTextV1, TextToSpeechV1
 from marvin.beta.applications import Application
 from pydub import AudioSegment
 from pydub.playback import play
+from .logging_config import setup_logging
 
 from .recorder import Recorder
-
-logging.basicConfig(level=logging.INFO)
 
 # Watson Speech to Text Configuration
 CONTENT_TYPE = config("CONTENT_TYPE", default="audio/wav")
@@ -57,6 +56,24 @@ class SentimentState(BaseModel):
     sentiment: list[Sentiment] = []
 
 
+@marvin.fn  # type: ignore
+def check_exit_command(user_input: str) -> bool:
+    """
+    Analyze the user's input to detect intentions to end the conversation.
+
+    This function checks if the `user input` contains phrases that imply a desire
+    to end the conversation. Examples of such phrases include 'got to go', 'goodbye', 'exit',
+    'stop', 'see you later', 'talk later', 'thanks', or 'done for today'. The goal
+    is to detect a wide range of possible signals that the user may want to terminate
+    the conversation.
+
+    The input to analyze is: {{ user_input }}.
+
+    Returns:
+        bool: Returns True if an exit-related phrase is detected, otherwise False.
+    """
+
+
 class VoiceAssistant:
 
     """
@@ -67,28 +84,36 @@ class VoiceAssistant:
 
     def __init__(self):
         """Initialize the VoiceAssistant and its services."""
+        # Setup logging
+        setup_logging(log_file="logs/chatbot_log.txt")
+
+        # Configure and initialize external services (IBM, Marvin, etc.)
         self._configure_services()
-        # Setting up the chatbot with description and tools
+        # Setting up the chatbot with instructions, state, and tools.
         self.chatbot = Application(
             name="Companion",
             model=config("MARVIN_CHAT_COMPLETIONS_MODEL"),
-            instructions="""A friendly, supportive chatbot.It always provides an
-                empathetic response when it detects negative sentiment. In
-                addition, you have a crucial goal to keep track of the user's
-                sentiment state, especially negative sentiment, to provide more
-                emotionally and contextually aware responses. As an example,
-                the user may have specific requests during an interaction after
-                expressing negative sentiment. For instance, if the last sentiment
-                from the user was negative, and the user asks for a joke, motivational
-                quote, or picture in the next interaction, the chatbot should provide
-                a feedback inquiry based on the user's request type, checking if the
-                joke, quote or picture helped cheer the user up. Note that if the user
-                asks for a picture, you will need to use the tool 'send_picture_to_user'
-                to send a picture. Another scenario could be that you notice that the
-                sentiment transitions from negative to positive, and in this case, you
-                should be especially happy and excited for the user, and include these
-                emotions in your responses.
-                """,
+            instructions=""" You are a friendly, supportive, and empathetic chatbot companion.
+            You must ensure to track the user's sentiment state, using the values
+            from the `Sentiment` Enum, which includes 'POSITIVE', 'NEGATIVE', and 'NEUTRAL.'
+            You must be sure to update the application's state accordingly with the detected value
+            from the Enum. You should always provide emotionally aware and context-sensitive
+            responses. If you detect that the user is feeling negative or down, offer a caring
+            and empathetic response that acknowledges their emotions. For example, if the user
+            expresses sadness, frustration, or anxiety, respond with comfort, reassurance, or
+            encouragement. Be attentive to their mood and aim to improve it by asking follow-up
+            questions or suggesting actions. In certain cases, after detecting negative sentiment,
+            the user may make specific requests to improve their mood.  When fulfilling the user's
+            request, always check in to ask whether the action helped improve their mood. For
+            example, if the user asks for a picture, you should use the `send_picture_to_user` tool to
+            send them a picture and ask if it helped brighten their day. Keep track of any
+            transitions in sentiment. If you notice that the user's mocod changes from negative
+            to positive, react with excitement and joy in your responses. Be explicitly happy
+            for them and celebrate their improved mood. For instance, if the user was previously
+            sad and now feels better, express how glad you are to see them feeling happier.
+            Maintain a friendly, conversational tone throughout the interaction. Aim to be a
+            supportive companion, ready to listen, empathize, and respond with both understanding
+            and positivity.""",
             state=SentimentState(),
             tools=[send_picture_to_user],
         )
@@ -97,7 +122,26 @@ class VoiceAssistant:
         self.conversation_history = []
 
     def __str__(self) -> str:
-        return f"The state of the assistant is {self.chatbot.state}"
+        """Return a string representation of the VoiceAssistant object."""
+        return (
+            f"Chatbot Object:\n"
+            f"ID: {self.chatbot.id}\n"
+            f"Name: {self.chatbot.name}\n"
+            f"Model: {self.chatbot.model}\n"
+            f"Instructions: {self.chatbot.instructions[:100]}... (truncated)\n"  # Shorten for readability
+            f"Tools: {self.chatbot.tools}\n"
+            f"State: {self.chatbot.state}\n"
+        )
+
+    def log_chatbot_details(self):
+        """Logs the chatbot object and conversation history."""
+        # Log chatbot details
+        logging.info(str(self))
+
+        # Log conversation history
+        logging.info("Conversation History:")
+        for entry in self.conversation_history:
+            logging.info(f"{entry['role']}: {entry['content']}")
 
     def _configure_services(self):
         """Configure and initialize external services (IBM, Marvin, etc.)."""
@@ -196,6 +240,10 @@ class VoiceAssistant:
         except ApiException as ex:
             logging.error(f"Method failed with status code {ex.code}: " f"{ex.message}")
 
+    def detect_sentiment(self, user_input: str) -> Sentiment:
+        """Detect the sentiment of the user's input using Marvin."""
+        return marvin.classify(user_input, Sentiment)
+
     def _speak(self, text):
         """Convert text input to speech."""
         # Create a WAV file to store the bot's speech
@@ -221,6 +269,28 @@ class VoiceAssistant:
                 "Method failed with status code " + str(ex.code) + ": " + ex.message
             )
 
+    def terminate_session(self, user_input: str):
+        """
+        Handles session termination, updates conversation history, logs details,
+        and speaks a goodbye message.
+
+        Args:
+            user_input (str): The final input from the user that triggered session termination.
+        """
+        # Update conversation history with the user's exit input
+        self.conversation_history.append({"role": "user", "content": user_input})
+        logging.info(f"User is exiting the session with input: {user_input}")
+
+        # Chatbot speaks a goodbye message
+        gpt_exit_message = "Alright, I understand. It was great talking to you. I am always here for you if you want to talk. Goodbye!"
+        self._speak(gpt_exit_message)
+
+        # Update conversation history with the bot's exit message
+        self.conversation_history.append({"role": "gpt", "content": gpt_exit_message})
+
+        # Log the chatbot details and conversation history before ending the session
+        self.log_chatbot_details()
+
     async def start_session(self):
         """Handle the conversation with the user."""
         # Start the session by speaking a greeting
@@ -234,16 +304,20 @@ class VoiceAssistant:
             if user_input:
                 user_input = user_input.lower()
                 # Exit the loop if the user says "exit"
-                if "exit" in user_input.strip().lower():
-                    self._speak("Goodbye!")
+                if check_exit_command(user_input):
+                    # Terminate the session if an exit command is detected
+                    self.terminate_session(user_input)
                     break
                 # Process the input through Marvin
                 try:
+                    # detect user sentiment
+                    self.detect_sentiment(user_input)
+
                     # Generate a GPT response based on the user's input
                     gpt_response = await self.chatbot.say_async(user_input)
                     # Extract the text from the GPT response
                     gpt_response_text = gpt_response.messages[-1].content[0].text.value
-                    logging.info(f"GPT Response Message: {gpt_response} \n")  #
+                    logging.info(f"GPT Response Message: {gpt_response_text} \n")  #
                     # Speak the GPT response
                     self._speak(gpt_response_text)
                     # Update the conversation history with the user's input and the GPT response
@@ -251,9 +325,8 @@ class VoiceAssistant:
                         {"role": "user", "content": user_input}
                     )
                     self.conversation_history.append(
-                        {"role": "gpt", "content": gpt_response}
+                        {"role": "gpt", "content": gpt_response_text}
                     )
-                    print("Chatbot object: ", self.chatbot)
                 except Exception as e:
                     logging.error(f"Failed to process input through Marvin: {e}")
                     self._speak(
@@ -263,3 +336,6 @@ class VoiceAssistant:
                 # If user_speech_text is None, handle the case appropriately
                 logging.info("No valid input received. Please try speaking again.")
                 self._speak("I didn't catch that, could you please repeat?")
+
+        # Log the chatbot details and conversation history at the end of the session
+        self.log_chatbot_details()
