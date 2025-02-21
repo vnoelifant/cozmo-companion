@@ -24,4 +24,11 @@ def setup_logging(log_file="logs/chatbot_log.txt"):
         format="%(asctime)s - %(levelname)s - %(message)s",
     )
 
+    # Suppress 'Unknown Event type' warnings from Anki Vector SDK
+    sdk_logger = logging.getLogger("anki_vector.events")
+    sdk_logger.setLevel(
+        logging.ERROR
+    )  # Suppress all logs below ERROR level (e.g., WARNING, INFO)
+
     logging.info("Logging setup complete.")
+    logging.info("Anki Vector SDK 'Unknown Event type' warnings are suppressed.")

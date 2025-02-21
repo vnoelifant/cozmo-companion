@@ -1,17 +1,17 @@
 import logging
 import os
+import asyncio
 from datetime import datetime
 from enum import Enum
 from pydantic import BaseModel
 
 import marvin
+import anki_vector
 import webbrowser
 from decouple import config
 from ibm_cloud_sdk_core.authenticators import IAMAuthenticator
-from ibm_watson import ApiException, SpeechToTextV1, TextToSpeechV1
+from ibm_watson import ApiException, SpeechToTextV1
 from marvin.beta.applications import Application
-from pydub import AudioSegment
-from pydub.playback import play
 from .logging_config import setup_logging
 
 from .recorder import Recorder
@@ -21,7 +21,9 @@ CONTENT_TYPE = config("CONTENT_TYPE", default="audio/wav")
 WORD_ALTERNATIVE_THRESHOLDS = config(
     "WORD_ALTERNATIVE_THRESHOLDS", default=0.9, cast=float
 )
-KEYWORDS = config("KEYWORDS", default="hey,hi,watson,friend,meet").split(",")
+KEYWORDS = str(config("KEYWORDS", default="hey,hi,watson,friend,meet", cast=str)).split(
+    ","
+)
 KEYWORDS_THRESHOLD = config("KEYWORDS_THRESHOLD", default=0.5, cast=float)
 MAX_TOKENS = config("MAX_TOKENS", default=1000, cast=int)
 TEMPERATURE = config("TEMPERATURE", default=1.2, cast=float)
@@ -149,9 +151,6 @@ class VoiceAssistant:
         self.SPEECH_TO_TEXT = self._initialize_ibm_service(
             config("IAM_APIKEY_STT"), config("URL_STT")
         )
-        self.TEXT_TO_SPEECH = self._initialize_ibm_service(
-            config("IAM_APIKEY_TTS"), config("URL_TTS")
-        )
 
         # Configure Marvin settings
         self._configure_marvin_settings()
@@ -169,12 +168,9 @@ class VoiceAssistant:
         # Determine the type of service based on the URL and initialize it
         if "speech-to-text" in url:
             service = SpeechToTextV1(authenticator=authenticator)
-        elif "text-to-speech" in url:
-            service = TextToSpeechV1(authenticator=authenticator)
         else:
             raise ValueError(
-                f"Invalid service URL: {url}. Expected 'speech-to-text' "
-                f"or 'text-to-speech' in the URL."
+                f"Invalid service URL: {url}. Expected 'speech-to-text in the URL."
             )
         service.set_service_url(url)
         return service
@@ -228,10 +224,7 @@ class VoiceAssistant:
                 # Check if there are any results in the transcription
                 if speech_result["results"]:
                     # Extract the transcribed text from the result
-                    result_alternative = speech_result["results"][0]["alternatives"][0]
-                    user_speech_text = result_alternative["transcript"]
-
-                    return user_speech_text
+                    return speech_result["results"][0]["alternatives"][0]["transcript"]
                 else:
                     logging.info("No speech detected. Please try again.")
                     return None
@@ -245,29 +238,38 @@ class VoiceAssistant:
         return marvin.classify(user_input, Sentiment)
 
     def _speak(self, text):
-        """Convert text input to speech."""
-        # Create a WAV file to store the bot's speech
-        bot_speech_file = VoiceAssistant._create_wav_file(prefix="bot")
-        # Convert the text to speech using IBM's Text-to-Speech service
+        """
+        Connects to Anki Vector and makes it speak the provided text.
+
+        This method establishes a connection to the Vector robot, makes it say the given text,
+        and ensures that the connection is properly closed afterward to avoid resource leaks.
+
+        Args:
+            text (str): The text message that Vector should speak.
+        """
+        robot = None  # Declare the robot variable before entering the try block to avoid reference issues.
+
         try:
-            with open(bot_speech_file, "wb") as audio_out:
-                audio_out.write(
-                    self.TEXT_TO_SPEECH.synthesize(
-                        text,
-                        voice=VOICE,
-                        accept=AUDIO_FORMAT,
-                    )
-                    .get_result()
-                    .content
-                )
-            # Play the generated speech
-            bot_speech_response = AudioSegment.from_wav(bot_speech_file)
-            play(bot_speech_response)
-        except ApiException as ex:
-            # Handle exceptions from the IBM service
-            logging.error(
-                "Method failed with status code " + str(ex.code) + ": " + ex.message
-            )
+            # Establish a connection to Vector and execute speech behavior
+            with anki_vector.Robot() as robot:
+                # print(robot.conn.is_connected)
+                robot.behavior.say_text(text)
+
+        except Exception as e:
+            # Log any errors that occur while making Vector speak
+            logging.error(f"Error during Vector speech: {e}")
+
+        finally:
+            # Ensure the robot connection is properly closed to prevent resource leaks
+            if (
+                robot is not None
+                and hasattr(robot, "conn")
+                and getattr(robot.conn, "_has_control", False)
+            ):
+                try:
+                    asyncio.run(robot.conn.close())  # Perform an async connection close
+                except Exception as close_error:
+                    logging.error(f"Error closing Vector connection: {close_error}")
 
     def terminate_session(self, user_input: str):
         """
@@ -281,7 +283,7 @@ class VoiceAssistant:
         self.conversation_history.append({"role": "user", "content": user_input})
         logging.info(f"User is exiting the session with input: {user_input}")
 
-        # Chatbot speaks a goodbye message
+        # Speak a goodbye message
         gpt_exit_message = "Alright, I understand. It was great talking to you. I am always here for you if you want to talk. Goodbye!"
         self._speak(gpt_exit_message)
 
@@ -292,50 +294,84 @@ class VoiceAssistant:
         self.log_chatbot_details()
 
     async def start_session(self):
-        """Handle the conversation with the user."""
-        # Start the session by speaking a greeting
-        self._speak("Hello! Chat with GPT and I will speak its responses!")
-        while True:
-            # Listen to the user's speech and transcribe it
-            user_input = self._listen()
-            logging.info(f"User Speech Text: {user_input} \n")
+        """
+        Handles the conversation flow between the user and the chatbot.
 
-            # Check if user_speech_text is not None
-            if user_input:
-                user_input = user_input.lower()
-                # Exit the loop if the user says "exit"
-                if check_exit_command(user_input):
-                    # Terminate the session if an exit command is detected
-                    self.terminate_session(user_input)
-                    break
-                # Process the input through Marvin
-                try:
-                    # detect user sentiment
-                    self.detect_sentiment(user_input)
+        This method continuously listens for user input, processes it using Marvin AI,
+        and provides spoken responses through the Vector robot. The session continues
+        until the user explicitly exits or the application is interrupted.
 
-                    # Generate a GPT response based on the user's input
-                    gpt_response = await self.chatbot.say_async(user_input)
-                    # Extract the text from the GPT response
-                    gpt_response_text = gpt_response.messages[-1].content[0].text.value
-                    logging.info(f"GPT Response Message: {gpt_response_text} \n")  #
-                    # Speak the GPT response
-                    self._speak(gpt_response_text)
-                    # Update the conversation history with the user's input and the GPT response
-                    self.conversation_history.append(
-                        {"role": "user", "content": user_input}
-                    )
-                    self.conversation_history.append(
-                        {"role": "gpt", "content": gpt_response_text}
-                    )
-                except Exception as e:
-                    logging.error(f"Failed to process input through Marvin: {e}")
-                    self._speak(
-                        "Sorry, I encountered an error processing your request."
-                    )
-            else:
-                # If user_speech_text is None, handle the case appropriately
-                logging.info("No valid input received. Please try speaking again.")
-                self._speak("I didn't catch that, could you please repeat?")
+        It also ensures proper error handling, graceful session termination, and logging
+        of the conversation history.
+        """
+        try:
+            # Initiate the session by greeting the user
+            self._speak("Hello! Chat with GPT and I will speak its responses!")
+
+            while True:
+                # Capture and transcribe the user's speech input
+                user_input = self._listen()
+                logging.info(f"User Speech Text: {user_input} \n")
+
+                # Ensure user_input is valid (not None or empty)
+                if user_input:
+                    user_input = (
+                        user_input.lower()
+                    )  # Normalize input to lowercase for consistency
+
+                    # Check if the user intends to exit the conversation
+                    if check_exit_command(user_input):
+                        # Gracefully terminate the session and break the loop
+                        self.terminate_session(user_input)
+
+                        # Add delay to ensure Vector finishes speaking
+                        await asyncio.sleep(2)  # Adjust if needed
+                        break
+
+                    # Process user input through Marvin AI
+                    try:
+                        # Analyze user sentiment (e.g., positive, negative, neutral)
+                        self.detect_sentiment(user_input)
+
+                        # Generate a GPT-based response using Marvin AI
+                        gpt_response = await self.chatbot.say_async(user_input)
+
+                        # Extract text from the GPT response
+                        gpt_response_text = (
+                            gpt_response.messages[-1].content[0].text.value
+                        )
+                        logging.info(f"GPT Response Message: {gpt_response_text} \n")
+
+                        # Speak the generated response using Vector
+                        self._speak(gpt_response_text)
+
+                        # Record conversation history (both user input and AI response)
+                        self.conversation_history.append(
+                            {"role": "user", "content": user_input}
+                        )
+                        self.conversation_history.append(
+                            {"role": "gpt", "content": gpt_response_text}
+                        )
+
+                    except Exception as e:
+                        # Handle errors in GPT response processing
+                        logging.error(f"Failed to process input through Marvin: {e}")
+                        self._speak(
+                            "Sorry, I encountered an error processing your request."
+                        )
+
+                else:
+                    # Handle cases where no valid input was detected
+                    logging.info("No valid input received. Please try speaking again.")
+                    self._speak("I didn't catch that, could you please repeat?")
+
+        except asyncio.CancelledError:
+            # Handle cases where the session is interrupted or cancelled (e.g., program exit)
+            logging.warning("Session was cancelled (expected during shutdown).")
+
+        finally:
+            # Final cleanup step that always executes when the session ends
+            logging.info("Vector session ended.")
 
         # Log the chatbot details and conversation history at the end of the session
         self.log_chatbot_details()
